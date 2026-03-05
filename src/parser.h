@@ -7,6 +7,16 @@
 
 namespace app_parser
 {
+	enum class BarcodeShape
+	{
+		Horizontal,
+		Circular
+	};
+
+	const std::map<std::string, app_parser::BarcodeShape> kArgShapeMap{
+		{"horizontal", app_parser::BarcodeShape::Horizontal},
+		{"circular", app_parser::BarcodeShape::Circular}};
+
 	struct InputArgs
 	{
 		std::string input_video_path;
@@ -15,6 +25,8 @@ namespace app_parser
 		int nframes = 0;
 		int width = 0;
 		int height = 0;
+		BarcodeShape shape = BarcodeShape::Horizontal;
+		bool trim = false;
 		bool show_info = false;
 	};
 

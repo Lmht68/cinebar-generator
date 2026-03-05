@@ -58,8 +58,10 @@ int main(int argc, char **argv)
         spdlog::info("output image: {}", args.output_img_path);
         spdlog::info("interval: {} seconds", args.interval);
         spdlog::info("frames to sample: {}", args.nframes);
+        spdlog::info("shape: {}", static_cast<int>(args.shape));
         spdlog::info("width: {}", args.width);
         spdlog::info("height: {}", args.height);
+        spdlog::info("trim letterboxing and end credits: {}", args.trim ? "yes" : "no");
     }
     catch (const CLI::ParseError &pe)
     {

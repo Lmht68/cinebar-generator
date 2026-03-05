@@ -16,6 +16,11 @@ namespace app_parser
 		auto nframes_opt = app.add_option("-n,--nframes", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
 		app.add_option("-W,--width", args.width, "Width of each frame in the output barcode image, in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
+		app.add_option("-s,--shape", args.shape, "Barcode shape")
+			->transform(CLI::CheckedTransformer(kArgShapeMap, CLI::ignore_case))
+			->default_val(app_parser::BarcodeShape::Horizontal);
+
+		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);
 
