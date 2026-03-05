@@ -13,6 +13,8 @@ namespace app_parser
 		std::string output_img_path;
 		double interval = 0.0;
 		int nframes = 0;
+		int width = 0;
+		int height = 0;
 		bool show_info = false;
 	};
 

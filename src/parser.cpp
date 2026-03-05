@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include <filesystem>
+
 namespace app_parser
 {
 	InputArgs ParseArgs(int argc, char **argv)
@@ -12,6 +14,8 @@ namespace app_parser
 		app.add_option("-o,--output", args.output_img_path, "Output barcode image filename. If not provided, a name will be automatically generated.");
 		auto interval_opt = app.add_option("-i,--interval", args.interval, "Frame sampling interval in seconds")->check(CLI::PositiveNumber);
 		auto nframes_opt = app.add_option("-n,--nframes", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
+		app.add_option("-W,--width", args.width, "Width of each frame in the output barcode image, in pixels")->check(CLI::PositiveNumber);
+		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
 
 		app.parse(argc, argv);
 
@@ -29,6 +33,13 @@ namespace app_parser
 		if (!args.show_info && args.input_video_path.empty())
 		{
 			throw CLI::RequiredError("Input video");
+		}
+
+		if (args.output_img_path.empty())
+		{
+			args.output_img_path = std::filesystem::path(args.input_video_path)
+									   .replace_extension(".png")
+									   .string();
 		}
 
 		return args;

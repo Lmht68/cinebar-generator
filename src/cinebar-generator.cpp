@@ -34,6 +34,7 @@ int main(int argc, char **argv)
                          CLI11_VERSION_PATCH);
             return 0;
         }
+
         auto video_info = app_video_processor::LoadVideoInfo(args.input_video_path);
 
         if (args.interval > 0.0)
@@ -42,12 +43,23 @@ int main(int argc, char **argv)
         }
         else if (args.nframes <= 0)
         {
-            args.nframes = video_info.frame_count; // Sample all frames if no interval is specified
+            args.nframes = video_info.frame_count; // Sample all frames if no interval or nframes is specified
         }
 
+        args.nframes = std::min(args.nframes, video_info.frame_count); // Ensure nframes does not exceed total frame count
+
+        if (args.width <= 0)
+            args.width = 1; // Default width is 1 pixel per frame if not specified
+
+        if (args.height <= 0)
+            args.height = video_info.height; // Use original height if not specified
+
         spdlog::info("input video: {}", args.input_video_path);
+        spdlog::info("output image: {}", args.output_img_path);
         spdlog::info("interval: {} seconds", args.interval);
-        spdlog::info("nframes to sample: {}", args.nframes);
+        spdlog::info("frames to sample: {}", args.nframes);
+        spdlog::info("width: {}", args.width);
+        spdlog::info("height: {}", args.height);
     }
     catch (const CLI::ParseError &pe)
     {

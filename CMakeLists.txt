@@ -41,11 +41,14 @@ enable_testing()
 
 add_executable(cinebar-generator-tests
     "tests/test_video_processor.cpp"
+	"tests/test_parser.cpp"
 	"src/video_processor.cpp"
+	"src/parser.cpp"
 )
 
 target_link_libraries(cinebar-generator-tests PRIVATE
     GTest::gtest_main
+	CLI11::CLI11
     ${OpenCV_LIBS}
 )
 
