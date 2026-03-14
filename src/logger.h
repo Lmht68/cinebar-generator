@@ -3,8 +3,10 @@
 
 #include "spdlog/spdlog.h"
 
-namespace app_logger {
+namespace app_logger
+{
     void InitLogger();
+    std::shared_ptr<spdlog::logger> &CvLogger();
 }
 
 #endif

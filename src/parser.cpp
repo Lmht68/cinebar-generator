@@ -19,7 +19,6 @@ namespace app_parser
 		app.add_option("-s,--shape", args.shape, "Barcode shape")
 			->transform(CLI::CheckedTransformer(kArgShapeMap, CLI::ignore_case))
 			->default_val(app_parser::BarcodeShape::Horizontal);
-
 		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);

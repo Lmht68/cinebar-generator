@@ -66,36 +66,36 @@ namespace
                             const char *func,
                             const char *message)
     {
-        std::string formatted = "[OpenCV] ";
+        auto &cv_logger = app_logger::CvLogger();
+        if (!cv_logger)
+            return;
 
+        std::string formatted = "[OpenCV] ";
         if (tag)
             formatted += std::string("[") + tag + "] ";
-
         formatted += message;
-
 #ifndef NDEBUG
         if (file && func)
             formatted += fmt::format(" ({}:{} in {})", file, line, func);
 #endif
-
         switch (level)
         {
         case cv::utils::logging::LOG_LEVEL_FATAL:
         case cv::utils::logging::LOG_LEVEL_ERROR:
-            spdlog::error("{}", formatted);
+            cv_logger->error("{}", formatted);
             break;
         case cv::utils::logging::LOG_LEVEL_WARNING:
-            spdlog::warn("{}", formatted);
+            cv_logger->warn("{}", formatted);
             break;
         case cv::utils::logging::LOG_LEVEL_INFO:
-            spdlog::info("{}", formatted);
+            cv_logger->info("{}", formatted);
             break;
         case cv::utils::logging::LOG_LEVEL_DEBUG:
         case cv::utils::logging::LOG_LEVEL_VERBOSE:
-            spdlog::debug("{}", formatted);
+            cv_logger->debug("{}", formatted);
             break;
         default:
-            spdlog::info("{}", formatted);
+            cv_logger->info("{}", formatted);
             break;
         }
     }
@@ -103,6 +103,12 @@ namespace
 
 namespace app_logger
 {
+    std::shared_ptr<spdlog::logger> &CvLogger()
+    {
+        static std::shared_ptr<spdlog::logger> cv_logger;
+        return cv_logger;
+    }
+
     void InitLogger()
     {
         try
@@ -128,17 +134,21 @@ namespace app_logger
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_filename, true);
             file_sink->set_level(spdlog::level::trace);
             sinks.push_back(file_sink);
-#ifndef NDEBUG
             auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
             console_sink->set_level(spdlog::level::debug);
             sinks.push_back(console_sink);
-#endif
             // Create and Register Logger
             auto logger = std::make_shared<spdlog::logger>("main_log", sinks.begin(), sinks.end());
-            logger->set_pattern("[%Y-%m-%d %H:%M:%S] [%^%l%$] %v");
+            logger->set_pattern("[%Y-%m-%d %H:%M] [%^%l%$] %v");
             logger->set_level(spdlog::level::trace);
             spdlog::register_logger(logger);
             spdlog::set_default_logger(logger);
+            // OpenCV logger - only file sink to avoid cluttering console
+            auto &cv_logger = CvLogger();
+            cv_logger = std::make_shared<spdlog::logger>("opencv_log", file_sink);
+            cv_logger->set_pattern("[%Y-%m-%d %H:%M] [%^%l%$] %v");
+            cv_logger->set_level(spdlog::level::trace);
+            spdlog::register_logger(cv_logger);
             // Flush every 10 seconds so logs appear in the file while the app is running
             spdlog::flush_every(std::chrono::seconds(10));
             // Flush on Warning to ensure logs are saved if app crashes
