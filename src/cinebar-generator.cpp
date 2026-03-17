@@ -73,17 +73,18 @@ int main(int argc, char **argv)
         }
         else
         {
-            args.nframes = video_info.frame_count; // Sample all frames if no interval or nframes is specified
+            // Sample all frames if no interval or nframes is specified
+            args.nframes = video_info.frame_count;
             args.interval = 1 / video_info.fps;
         }
-
-        args.nframes = std::min(args.nframes, video_info.frame_count); // Ensure nframes does not exceed total frame count
-
+        // Ensure nframes does not exceed total frame count
+        args.nframes = std::min(args.nframes, video_info.frame_count);
+        // Default width is 1 pixel per frame if not specified
         if (args.width <= 0)
-            args.width = 1; // Default width is 1 pixel per frame if not specified
-
+            args.width = 1;
+        // Use original height if not specified
         if (args.height <= 0)
-            args.height = video_info.height; // Use original height if not specified
+            args.height = video_info.height;
 
         spdlog::info(
             "Video processing settings:\n"

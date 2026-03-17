@@ -17,7 +17,6 @@ namespace app_video_processor
 
         int frame_count = static_cast<int>(video.get(cv::CAP_PROP_FRAME_COUNT));
         double fps = video.get(cv::CAP_PROP_FPS);
-        // video.release(); // Not required (RAII handles it)
         int width = static_cast<int>(video.get(cv::CAP_PROP_FRAME_WIDTH));
         int height = static_cast<int>(video.get(cv::CAP_PROP_FRAME_HEIGHT));
 
