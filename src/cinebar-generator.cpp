@@ -26,7 +26,7 @@ namespace
         while (!spinner_stop.load())
         {
             std::cout << "\r" << prefix << spin_chars[i % spin_chars.size()] << std::flush;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
             ++i;
         }
         // Clear line when finished
@@ -65,9 +65,16 @@ int main(int argc, char **argv)
         {
             args.nframes = app_video_processor::NframesFromInterval(video_info, args.interval);
         }
-        else if (args.nframes <= 0)
+        else if (args.nframes > 0)
+        {
+            // Compute sampling FPS from desired number of frames
+            double duration = static_cast<double>(video_info.frame_count) / video_info.fps;
+            args.interval = args.nframes / duration;
+        }
+        else
         {
             args.nframes = video_info.frame_count; // Sample all frames if no interval or nframes is specified
+            args.interval = 1 / video_info.fps;
         }
 
         args.nframes = std::min(args.nframes, video_info.frame_count); // Ensure nframes does not exceed total frame count
@@ -80,15 +87,17 @@ int main(int argc, char **argv)
 
         spdlog::info(
             "Video processing settings:\n"
-            "   {:15}: {}\n"
-            "   {:15}: {}\n"
-            "   {:15}: {} s\n"
-            "   {:15}: {}\n"
-            "   {:15}: {}",
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}",
             "Input video", args.input_video_path,
             "Output image", args.output_img_path,
-            "Interval", args.interval,
-            "Frames sample", args.nframes,
+            "Fps", video_info.fps,
+            "Sampling interval (s)", args.interval,
+            "Frames sampled", args.nframes,
             "Shape", app_parser::ToString(args.shape));
 
         // Detect letterbox / pillarbox trimming, if specified
@@ -112,18 +121,18 @@ int main(int argc, char **argv)
         spinner_thread.join();
         spdlog::info(
             "Video box info:\n"
-            "   {:<20}: {}\n"
-            "   {:<20}: {}x{}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}x{}\n"
             "{}",
             "Box type", app_video_processor::ToString(video_info.box_type),
             "Original resolution", video_info.width, video_info.height,
             video_info.box_type != app_video_processor::BoxType::None
                 ? fmt::format(
-                      "   {:<20}: {}x{}\n"
-                      "   {:<20}: Top={}, Bottom={}, Left={}, Right={}",
+                      "   {:<22}: {}x{}\n"
+                      "   {:<22}: Top={}, Bottom={}, Left={}, Right={}",
                       "Content resolution", content_w, content_h,
                       "Bars (pixels)", top_bar, bottom_bar, left_bar, right_bar)
-                : fmt::format("   {:<20}: {}x{}", "Content resolution", content_w, content_h));
+                : fmt::format("   {:<22}: {}x{}", "Content resolution", content_w, content_h));
     }
     catch (const CLI::ParseError &pe)
     {
