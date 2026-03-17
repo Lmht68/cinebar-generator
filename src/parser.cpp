@@ -13,12 +13,11 @@ namespace app_parser
 		app.add_option("input", args.input_video_path, "Input video file")->check(CLI::ExistingFile);
 		app.add_option("-o,--output", args.output_img_path, "Output barcode image filename. If not provided, a name will be automatically generated.");
 		auto interval_opt = app.add_option("-i,--interval", args.interval, "Frame sampling interval in seconds")->check(CLI::PositiveNumber);
-		auto nframes_opt = app.add_option("-n,--nframes", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
-		app.add_option("-W,--width", args.width, "Width of each frame in the output barcode image, in pixels")->check(CLI::PositiveNumber);
+		auto nframes_opt = app.add_option("-n,--frames", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
+		app.add_option("-W,--bar-width", args.bar_w, "Width of each barcode stripe in the output barcode image, in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
-		app.add_option("-s,--shape", args.shape, "Barcode shape")
-			->transform(CLI::CheckedTransformer(kArgShapeMap, CLI::ignore_case))
-			->default_val(app_parser::BarcodeShape::Horizontal);
+		app.add_flag("--circular", [&](std::int64_t)
+					 { args.shape = app_parser::BarcodeShape::Circular; });
 		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);

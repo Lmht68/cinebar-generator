@@ -79,61 +79,77 @@ int main(int argc, char **argv)
         }
         // Ensure nframes does not exceed total frame count
         args.nframes = std::min(args.nframes, video_info.frame_count);
-        // Default width is 1 pixel per frame if not specified
-        if (args.width <= 0)
-            args.width = 1;
-        // Use original height if not specified
-        if (args.height <= 0)
-            args.height = video_info.height;
 
-        spdlog::info(
-            "Video processing settings:\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}",
-            "Input video", args.input_video_path,
-            "Output image", args.output_img_path,
-            "Fps", video_info.fps,
-            "Sampling interval (s)", args.interval,
-            "Frames sampled", args.nframes,
-            "Shape", app_parser::ToString(args.shape));
-
-        // Detect letterbox / pillarbox trimming, if specified
-        spinner_stop.store(false);
-        std::thread spinner_thread(spinner, " Video box info:... ");
-        app_video_processor::DetectVideoBoxType(video_info);
-        int top_bar = 0, bottom_bar = 0, left_bar = 0, right_bar = 0;
-
-        if (video_info.bounds)
+        // Use original height if not specified for horizontal barcodes
+        if (args.shape == app_parser::BarcodeShape::Horizontal && args.height <= 0)
         {
-            const auto &b = *video_info.bounds;
-            top_bar = b.top;
-            bottom_bar = video_info.height - b.bottom;
-            left_bar = b.left;
-            right_bar = video_info.width - b.right;
+            args.height = video_info.height;
+            args.width = args.bar_w * args.nframes;
+        }
+        else
+        {
+            args.height = args.width = args.bar_w * args.nframes;
         }
 
-        int content_w = video_info.width - left_bar - right_bar;
-        int content_h = video_info.height - top_bar - bottom_bar;
-        spinner_stop.store(true);
-        spinner_thread.join();
         spdlog::info(
-            "Video box info:\n"
+            "Cinebar settings:\n"
             "   {:<22}: {}\n"
-            "   {:<22}: {}x{}\n"
-            "{}",
-            "Box type", app_video_processor::ToString(video_info.box_type),
-            "Original resolution", video_info.width, video_info.height,
-            video_info.box_type != app_video_processor::BoxType::None
-                ? fmt::format(
-                      "   {:<22}: {}x{}\n"
-                      "   {:<22}: Top={}, Bottom={}, Left={}, Right={}",
-                      "Content resolution", content_w, content_h,
-                      "Bars (pixels)", top_bar, bottom_bar, left_bar, right_bar)
-                : fmt::format("   {:<22}: {}x{}", "Content resolution", content_w, content_h));
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}x{}",
+            "Input video", args.input_video_path,
+            "Output image", args.output_img_path,
+            "Sampling interval (s)", args.interval,
+            "Frames sampled", args.nframes,
+            "Shape", app_parser::ToString(args.shape),
+            "Stripe width (px)", args.bar_w,
+            "Output resolution (px)", args.width, args.height);
+        spdlog::info(
+            "Video info:\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}x{}",
+            "Fps", video_info.fps,
+            "Frames", video_info.frame_count,
+            "Resolution", video_info.width, video_info.height);
+
+        // Detect letterbox / pillarbox trimming, if specified
+        if (args.trim)
+        {
+            spinner_stop.store(false);
+            std::thread spinner_thread(spinner, " Trimming enabled: Detecting letterboxing/pillarboxing...");
+            app_video_processor::DetectVideoBoxType(video_info);
+            int top_bar = 0, bottom_bar = 0, left_bar = 0, right_bar = 0;
+
+            if (video_info.bounds)
+            {
+                const auto &b = *video_info.bounds;
+                top_bar = b.top;
+                bottom_bar = video_info.height - b.bottom;
+                left_bar = b.left;
+                right_bar = video_info.width - b.right;
+            }
+
+            int content_w = video_info.width - left_bar - right_bar;
+            int content_h = video_info.height - top_bar - bottom_bar;
+            spinner_stop.store(true);
+            spinner_thread.join();
+            spdlog::info(
+                "Trimming info:\n"
+                "   {:<22}: {}\n"
+                "{}",
+                "Box type", app_video_processor::ToString(video_info.box_type),
+                video_info.box_type != app_video_processor::BoxType::None
+                    ? fmt::format(
+                          "   {:<22}: {}x{}\n"
+                          "   {:<22}: Top={}, Bottom={}, Left={}, Right={}",
+                          "Content resolution", content_w, content_h,
+                          "Bars (px)", top_bar, bottom_bar, left_bar, right_bar)
+                    : fmt::format("   {:<22}: {}x{}", "Content resolution", content_w, content_h));
+        }
     }
     catch (const CLI::ParseError &pe)
     {

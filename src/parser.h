@@ -36,6 +36,7 @@ namespace app_parser
 		std::string output_img_path;
 		double interval = 0.0;
 		int nframes = 0;
+		int bar_w = 1;
 		int width = 0;
 		int height = 0;
 		BarcodeShape shape = BarcodeShape::Horizontal;
