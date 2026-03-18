@@ -12,44 +12,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system tools
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
-            autoconf \
-            autoconf-archive \
-            automake \
-            libtool \
-            pkg-config \
-            gperf \
             cmake \
             ninja-build \
-            curl \
-            zip \
-            unzip \
-            tar
+            libopencv-dev \
+            libspdlog-dev \
+            libgtest-dev
 
-      - name: Setup vcpkg
+      # Build GTest (required on Ubuntu)
+      - name: Build GTest
         run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.sh
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: ~/.vcpkg-cache
-          key: ${{ runner.os }}-vcpkg-binary-${{ hashFiles('vcpkg.json') }}
-          restore-keys: ${{ runner.os }}-vcpkg-binary-
-
-      - name: Install dependencies
-        run: ./vcpkg/vcpkg install
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib
 
       - name: Configure
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+        run: cmake -S . -B build -G Ninja
 
       - name: Build
         run: cmake --build build
