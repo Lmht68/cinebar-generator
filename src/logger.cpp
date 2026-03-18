@@ -155,11 +155,12 @@ namespace app_logger
             spdlog::flush_on(spdlog::level::warn);
             spdlog::info("logger: spdlog initialized.");
             // Redirect OpenCV log to spdlog
-#if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 14
+#if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 12
             cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_INFO);
             cv::utils::logging::internal::replaceWriteLogMessageEx(OpenCvSpdlogBridge);
 #else
             // Fallback: no replace function available
+            cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
             // TODO:
 #endif
         }
