@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 #include <cmath>
+#include <filesystem>
 
 namespace app_video_processor
 {
@@ -17,10 +18,12 @@ namespace app_video_processor
 
         int frame_count = static_cast<int>(video.get(cv::CAP_PROP_FRAME_COUNT));
         double fps = video.get(cv::CAP_PROP_FPS);
+        double duration = frame_count / fps;
+        auto size = std::filesystem::file_size(video_path);
         int width = static_cast<int>(video.get(cv::CAP_PROP_FRAME_WIDTH));
         int height = static_cast<int>(video.get(cv::CAP_PROP_FRAME_HEIGHT));
 
-        return {std::move(video), frame_count, fps, width, height};
+        return {std::move(video), fps, duration, size, frame_count, width, height};
     }
 
     int GetFrameCountFromInterval(int frame_count, double fps, double interval)

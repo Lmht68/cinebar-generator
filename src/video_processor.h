@@ -24,6 +24,25 @@ namespace app_video_processor
 		Pillarbox,
 		Windowbox
 	};
+	struct VideoInfo
+	{
+		cv::VideoCapture capture;
+		double fps;
+		double duration;
+		std::uintmax_t size;
+		int frame_count;
+		int width;
+		int height;
+		std::optional<VideoBounds> bounds;
+		BoxType box_type = BoxType::None;
+	};
+
+	constexpr double kDownScaleFactor = 0.25; // 1/4 size for faster processing
+	constexpr double kMinCropRatio = 0.97;	  // Ignore crops that keep more than 97% of the original frame
+	constexpr int kDefaultThreshold = 16;
+	constexpr double kDefaultMinBlackRatio = 0.98;
+	constexpr int kDefaultSampleFrames = 10;
+
 	inline const char *ToString(app_video_processor::BoxType type)
 	{
 		switch (type)
@@ -40,27 +59,10 @@ namespace app_video_processor
 			return "Unknown";
 		}
 	}
-	struct VideoInfo
-	{
-		cv::VideoCapture capture;
-		int frame_count;
-		double fps;
-		int width;
-		int height;
-
-		std::optional<VideoBounds> bounds;
-		BoxType box_type = BoxType::None;
-	};
 
 	VideoInfo LoadVideoInfo(const std::string &video_path);
 	int GetFrameCountFromInterval(int frame_count, double fps, double interval);
 	int NframesFromInterval(const VideoInfo &video_info, double interval);
-
-	constexpr double kDownScaleFactor = 0.25; // 1/4 size for faster processing
-	constexpr double kMinCropRatio = 0.97;	  // Ignore crops that keep more than 97% of the original frame
-	constexpr int kDefaultThreshold = 16;
-	constexpr double kDefaultMinBlackRatio = 0.98;
-	constexpr int kDefaultSampleFrames = 10;
 
 	std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed,
 											int threshold = kDefaultThreshold,

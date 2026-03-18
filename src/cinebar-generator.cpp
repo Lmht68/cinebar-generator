@@ -111,9 +111,13 @@ int main(int argc, char **argv)
             "Video info:\n"
             "   {:<22}: {}\n"
             "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
             "   {:<22}: {}x{}",
             "Fps", video_info.fps,
+            "Duration (s)", video_info.duration,
             "Frames", video_info.frame_count,
+            "Size (bytes)", video_info.size,
             "Resolution", video_info.width, video_info.height);
 
         // Detect letterbox / pillarbox trimming, if specified
