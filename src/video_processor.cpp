@@ -65,8 +65,8 @@ namespace app_video_processor
         int h_downscaled = frame_downscaled.rows;
         int w_downscaled = frame_downscaled.cols;
 
-        std::vector<double> rowBlackRatio(h_downscaled, 0.0);
-        std::vector<double> colBlackRatio(w_downscaled, 0.0);
+        std::vector<double> row_black_ratio(h_downscaled, 0.0);
+        std::vector<double> col_black_ratio(w_downscaled, 0.0);
 
         // count black pixels
         for (int y = 0; y < h_downscaled; y++)
@@ -75,41 +75,41 @@ namespace app_video_processor
             {
                 if (frame_downscaled.at<uchar>(y, x) < threshold)
                 {
-                    rowBlackRatio[y] += 1;
-                    colBlackRatio[x] += 1;
+                    row_black_ratio[y] += 1;
+                    col_black_ratio[x] += 1;
                 }
             }
         }
 
         for (int y = 0; y < h_downscaled; y++)
-            rowBlackRatio[y] /= w_downscaled;
+            row_black_ratio[y] /= w_downscaled;
 
         for (int x = 0; x < w_downscaled; x++)
-            colBlackRatio[x] /= h_downscaled;
+            col_black_ratio[x] /= h_downscaled;
 
-        std::vector<bool> blackRows(h_downscaled);
-        std::vector<bool> blackCols(w_downscaled);
+        std::vector<bool> black_rows(h_downscaled);
+        std::vector<bool> black_cols(w_downscaled);
 
         for (int i = 0; i < h_downscaled; i++)
-            blackRows[i] = rowBlackRatio[i] > min_black_ratio;
+            black_rows[i] = row_black_ratio[i] > min_black_ratio;
 
         for (int i = 0; i < w_downscaled; i++)
-            blackCols[i] = colBlackRatio[i] > min_black_ratio;
+            black_cols[i] = col_black_ratio[i] > min_black_ratio;
 
         int top = 0;
-        while (top < h_downscaled && blackRows[top])
+        while (top < h_downscaled && black_rows[top])
             top++;
 
         int bottom = h_downscaled - 1;
-        while (bottom >= 0 && blackRows[bottom])
+        while (bottom >= 0 && black_rows[bottom])
             bottom--;
 
         int left = 0;
-        while (left < w_downscaled && blackCols[left])
+        while (left < w_downscaled && black_cols[left])
             left++;
 
         int right = w_downscaled - 1;
-        while (right >= 0 && blackCols[right])
+        while (right >= 0 && black_cols[right])
             right--;
 
         if (left >= right || top >= bottom)
@@ -140,8 +140,8 @@ namespace app_video_processor
                               int n_samples)
     {
         cv::VideoCapture &cap = video_info.capture;
-        int totalFrames = video_info.frame_count;
-        double interval = static_cast<double>(totalFrames) / n_samples;
+        int total_frames = video_info.frame_count;
+        double interval = static_cast<double>(total_frames) / n_samples;
         std::vector<VideoBounds> detections;
         cv::Mat frame;
 
