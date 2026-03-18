@@ -21,7 +21,8 @@ jobs:
             ninja-build \
             libopencv-dev \
             libspdlog-dev \
-            libgtest-dev
+            libgtest-dev \
+            libcli11-dev
 
       # Build GTest (required on Ubuntu)
       - name: Build GTest
