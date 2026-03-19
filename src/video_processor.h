@@ -64,14 +64,11 @@ namespace app_video_processor
 	int GetFrameCountFromInterval(int frame_count, double fps, double interval);
 	int NframesFromInterval(const VideoInfo &video_info, double interval);
 
-	std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed,
-											int threshold = kDefaultThreshold,
-											double min_black_ratio = kDefaultMinBlackRatio);
+	std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed);
 	cv::Mat CropImage(const cv::Mat &frame, const VideoBounds &bounds);
 	bool DetermineVideoBounds(VideoInfo &video_info,
-							  VideoBounds &bounds,
-							  int n_samples);
-	void DetectVideoBoxType(VideoInfo &video_info, int n_samples = kDefaultSampleFrames);
+							  VideoBounds &bounds);
+	void DetectVideoBoxType(VideoInfo &video_info);
 }
 
 #endif

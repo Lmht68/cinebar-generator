@@ -22,6 +22,7 @@ find_package(GTest REQUIRED)
 # Library (shared)
 add_library(cinebar-lib
     src/video_processor.cpp
+    src/frame_extractor.cpp
     src/parser.cpp
     src/logger.cpp
 )
@@ -50,6 +51,7 @@ enable_testing()
 
 add_executable(cinebar-generator-tests
     tests/test_video_processor.cpp
+    tests/test_frame_extractor.cpp
     tests/test_parser.cpp
 )
 

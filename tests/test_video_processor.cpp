@@ -111,7 +111,7 @@ namespace app_video_processor
         img.rowRange(0, 10).setTo(0);
         img.rowRange(height - 10, height).setTo(0);
 
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
 
         ASSERT_TRUE(bounds.has_value());
         EXPECT_NEAR(bounds->top, 10, 5);
@@ -128,7 +128,7 @@ namespace app_video_processor
         img.colRange(0, 20).setTo(0);
         img.colRange(width - 20, width).setTo(0);
 
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
 
         ASSERT_TRUE(bounds.has_value());
         EXPECT_NEAR(bounds->left, 20, 5);
@@ -143,7 +143,7 @@ namespace app_video_processor
         int height = 100;
         cv::Mat img(height, width, CV_8UC1, cv::Scalar(255));
 
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
 
         ASSERT_TRUE(bounds.has_value());
         EXPECT_NEAR(bounds->left, 0, 2);
@@ -155,7 +155,7 @@ namespace app_video_processor
     TEST(DetectBoundsTest, ReturnsNulloptIfEntireFrameBlack)
     {
         cv::Mat img(100, 200, CV_8UC1, cv::Scalar(0));
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
         EXPECT_FALSE(bounds.has_value());
     }
 
@@ -194,7 +194,7 @@ namespace app_video_processor
         img.rowRange(0, 10).setTo(0);
         img.rowRange(height - 10, height).setTo(0);
 
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
 
         ASSERT_TRUE(bounds.has_value());
         EXPECT_NEAR(bounds->top, 10, 5);
@@ -210,7 +210,7 @@ namespace app_video_processor
         cv::Mat img(height, width, CV_8UC1, cv::Scalar(255));
 
         // Use DetectBounds to get full-frame bounds (no black bars)
-        auto bounds = DetectBounds(img, 20, 0.9);
+        auto bounds = DetectBounds(img);
 
         ASSERT_TRUE(bounds.has_value());
 

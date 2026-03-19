@@ -54,9 +54,7 @@ namespace app_video_processor
     // ---
 
     // --- Handle Letterbox: black bars on top and bottom, Pillarbox: black bars on left and right
-    std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed,
-                                            int threshold,
-                                            double min_black_ratio)
+    std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed)
     {
         // downscale for faster processing
         cv::Mat frame_downscaled;
@@ -73,7 +71,7 @@ namespace app_video_processor
         {
             for (int x = 0; x < w_downscaled; x++)
             {
-                if (frame_downscaled.at<uchar>(y, x) < threshold)
+                if (frame_downscaled.at<uchar>(y, x) < kDefaultThreshold)
                 {
                     row_black_ratio[y] += 1;
                     col_black_ratio[x] += 1;
@@ -91,10 +89,10 @@ namespace app_video_processor
         std::vector<bool> black_cols(w_downscaled);
 
         for (int i = 0; i < h_downscaled; i++)
-            black_rows[i] = row_black_ratio[i] > min_black_ratio;
+            black_rows[i] = row_black_ratio[i] > kDefaultMinBlackRatio;
 
         for (int i = 0; i < w_downscaled; i++)
-            black_cols[i] = col_black_ratio[i] > min_black_ratio;
+            black_cols[i] = col_black_ratio[i] > kDefaultMinBlackRatio;
 
         int top = 0;
         while (top < h_downscaled && black_rows[top])
@@ -136,16 +134,15 @@ namespace app_video_processor
     }
 
     bool DetermineVideoBounds(VideoInfo &video_info,
-                              VideoBounds &bounds,
-                              int n_samples)
+                              VideoBounds &bounds)
     {
         cv::VideoCapture &cap = video_info.capture;
         int total_frames = video_info.frame_count;
-        double interval = static_cast<double>(total_frames) / n_samples;
+        double interval = static_cast<double>(total_frames) / kDefaultSampleFrames;
         std::vector<VideoBounds> detections;
         cv::Mat frame;
 
-        for (int i = 0; i < n_samples; i++)
+        for (int i = 0; i < kDefaultSampleFrames; i++)
         {
             int frame_id = static_cast<int>((i + 0.5) * interval);
             cap.set(cv::CAP_PROP_POS_FRAMES, frame_id);
@@ -197,11 +194,11 @@ namespace app_video_processor
         return true;
     }
 
-    void DetectVideoBoxType(VideoInfo &video_info, int n_samples)
+    void DetectVideoBoxType(VideoInfo &video_info)
     {
         VideoBounds bounds;
 
-        if (!DetermineVideoBounds(video_info, bounds, n_samples))
+        if (!DetermineVideoBounds(video_info, bounds))
             return;
 
         video_info.bounds = bounds;
