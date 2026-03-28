@@ -74,10 +74,14 @@ namespace app_parser
 		int bar_w = 1;
 		int width = 0;
 		int height = 0;
+		// TODO: start and end frames are for credit/end trimming
+		int start_frame = 0;
+		int end_frame = -1; // -1 means till the end of the video
 		BarcodeShape shape = BarcodeShape::Horizontal;
 		bool trim = false;
 		bool show_info = false;
 		Method method = Method::Avg;
+		int workers = 1;
 	};
 
 	InputArgs ParseArgs(int argc, char **argv);

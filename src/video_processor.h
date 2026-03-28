@@ -1,6 +1,9 @@
 #ifndef VIDEO_PROCESSOR_H_
 #define VIDEO_PROCESSOR_H_
 
+#include "parser.h"
+#include "frame_extractor.h"
+
 #include <opencv2/videoio.hpp>
 
 #include <string>
@@ -60,6 +63,13 @@ namespace app_video_processor
 		}
 	}
 
+	constexpr size_t kMaxThreadQueue = 16; // prevents memory blowup
+	struct FrameTask
+	{
+		int index;
+		cv::Mat frame;
+	};
+
 	VideoInfo LoadVideoInfo(const std::string &video_path);
 	int GetFrameCountFromInterval(int frame_count, double fps, double interval);
 	int NframesFromInterval(const VideoInfo &video_info, double interval);
@@ -69,6 +79,12 @@ namespace app_video_processor
 	bool DetermineVideoBounds(VideoInfo &video_info,
 							  VideoBounds &bounds);
 	void DetectVideoBoxType(VideoInfo &video_info);
+
+	std::vector<cv::Vec3b> ExtractColors(const app_parser::InputArgs &args,
+										 const VideoInfo &video_info,
+										 const app_frame_extractor::ColorFunc &extractor);
+	std::vector<cv::Mat> ExtractStripes(const app_parser::InputArgs &args,
+										const VideoInfo &video_info);
 }
 
 #endif

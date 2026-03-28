@@ -32,6 +32,39 @@ namespace
         // Clear line when finished
         std::cout << "\r" << std::string(prefix.size() + 2, ' ') << "\r";
     }
+
+    cv::Mat BuildHorizontalBarcode(const std::vector<cv::Vec3b> &colors, const app_parser::InputArgs &args)
+    {
+        if (colors.empty())
+            throw std::runtime_error("barcode_generator: No colors provided");
+
+        int total_width = static_cast<int>(colors.size()) * args.bar_w;
+        cv::Mat barcode(args.height, total_width, CV_8UC3);
+
+        for (int y = 0; y < args.height; ++y)
+        {
+            cv::Vec3b *row = barcode.ptr<cv::Vec3b>(y);
+
+            for (int i = 0; i < colors.size(); ++i)
+            {
+                int x_start = i * args.bar_w;
+                for (int dx = 0; dx < args.bar_w; ++dx)
+                    row[x_start + dx] = colors[i];
+            }
+        }
+
+        return barcode;
+    }
+
+    cv::Mat BuildHorizontalBarcodeFromStripes(const std::vector<cv::Mat> &stripes)
+    {
+        if (stripes.empty())
+            throw std::runtime_error("barcode_generator: No stripes provided");
+
+        cv::Mat barcode;
+        cv::hconcat(stripes, barcode);
+        return barcode;
+    }
 }
 
 int main(int argc, char **argv)
@@ -77,6 +110,7 @@ int main(int argc, char **argv)
             args.nframes = video_info.frame_count;
             args.interval = 1 / video_info.fps;
         }
+        std::cout << video_info.frame_count << std::endl;
         // Ensure nframes does not exceed total frame count
         args.nframes = std::min(args.nframes, video_info.frame_count);
 
@@ -156,6 +190,47 @@ int main(int argc, char **argv)
                           "Bars (px)", top_bar, bottom_bar, left_bar, right_bar)
                     : fmt::format("   {:<22}: {}x{}", "Content resolution", content_w, content_h));
         }
+
+        if (args.end_frame == -1)
+            args.end_frame = video_info.frame_count - 1; // Ensure end_frame is set to the last frame if it was -1
+
+        int n_workers_avail = std::thread::hardware_concurrency();
+        if (args.workers > n_workers_avail)
+            args.workers = n_workers_avail;
+
+        spinner_stop.store(false);
+        std::thread spinner_thread(
+            spinner,
+            std::string(" Generating cinebar using ") +
+                std::to_string(args.workers) +
+                " threads: Extracting frames...");
+        cv::Mat barcode;
+
+        if (args.method == app_parser::Method::Stripe)
+        {
+            auto stripes = app_video_processor::ExtractStripes(args, video_info);
+            barcode = BuildHorizontalBarcodeFromStripes(stripes); // stripes only have horizontal barcode shape
+        }
+        else
+        {
+            auto extractor = app_frame_extractor::getColorFunction(args.method);
+            auto colors = app_video_processor::ExtractColors(args, video_info, extractor);
+
+            if (args.shape == app_parser::BarcodeShape::Horizontal)
+            {
+                barcode = BuildHorizontalBarcode(colors, args);
+            }
+            else
+            {
+                // TODO: Implement circular barcode building
+                throw std::runtime_error("circular barcode shape is not implemented yet");
+            }
+        }
+
+        cv::imwrite(args.output_img_path, barcode);
+        spinner_stop.store(true);
+        spinner_thread.join();
+        spdlog::info("Cinebar generated successfully: {}", args.output_img_path);
     }
     catch (const CLI::ParseError &pe)
     {

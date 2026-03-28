@@ -19,7 +19,8 @@ namespace app_parser
 			->description("Method: avg | smoothed | kmeans | hsv | stripe");
 		app.add_option("-W,--bar-width", args.bar_w, "Width of each barcode stripe in the output barcode image, in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
-		app.add_flag("--circular", [&](std::int64_t)
+		app.add_option("-w,--workers", args.workers, "Number of worker threads to use")->check(CLI::PositiveNumber);
+		app.add_flag("-c, --circular", [&](std::int64_t)
 					 { args.shape = app_parser::BarcodeShape::Circular; });
 		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
 

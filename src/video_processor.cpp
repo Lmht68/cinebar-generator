@@ -6,6 +6,47 @@
 #include <cmath>
 #include <filesystem>
 
+namespace
+{
+    std::vector<int> ComputeFrameIndices(int start_frame, int end_frame, int n_frames)
+    {
+        std::vector<int> indices;
+        if (start_frame > end_frame || n_frames <= 0)
+            return indices;
+        int total = end_frame - start_frame + 1;
+
+        if (n_frames >= total)
+        {
+            indices.reserve(total);
+            for (int i = start_frame; i <= end_frame; ++i)
+                indices.push_back(i);
+            return indices;
+        }
+
+        indices.reserve(n_frames);
+
+        if (n_frames == 1)
+        {
+            indices.push_back(start_frame);
+            return indices;
+        }
+
+        for (int i = 0; i < n_frames; ++i)
+        {
+            double alpha = static_cast<double>(i) / (n_frames - 1);
+            int idx = static_cast<int>(
+                std::round(start_frame + alpha * (total - 1)));
+            if (idx < start_frame)
+                idx = start_frame;
+            if (idx > end_frame)
+                idx = end_frame;
+            indices.push_back(idx);
+        }
+
+        return indices;
+    }
+}
+
 namespace app_video_processor
 {
     // --- Video Info
@@ -217,4 +258,248 @@ namespace app_video_processor
             video_info.box_type = BoxType::None;
     }
     // ---
+
+    std::vector<cv::Vec3b> ExtractColors(
+        const app_parser::InputArgs &args,
+        const VideoInfo &video_info,
+        const app_frame_extractor::ColorFunc &extractor)
+    {
+        auto indices = ComputeFrameIndices(
+            args.start_frame,
+            args.end_frame,
+            args.nframes);
+
+        for (int idx : indices)
+        {
+            if (idx < args.start_frame || idx > args.end_frame)
+            {
+                throw std::runtime_error("video_processor: Frame index out of bounds");
+            }
+        }
+
+        std::vector<cv::Vec3b> colors(indices.size());
+        std::queue<FrameTask> queue;
+        std::mutex mtx;
+        std::condition_variable cond_var;
+
+        bool done = false;
+        const size_t max_queue_size = std::max(2 * args.workers, 4);
+
+        // Producer
+        std::thread producer([&]()
+                             {
+        cv::VideoCapture cap(args.input_video_path);
+        if (!cap.isOpened())
+            throw std::runtime_error("video_processor: Failed to open video");
+
+        int current = 0;
+        int target_idx = 0;
+
+        cv::Mat frame;
+
+        while (true)
+        {
+            // If we've already processed all target frames → stop early
+            if (target_idx >= (int)indices.size())
+                break;
+
+            int next_needed = indices[target_idx];
+
+            // Skip frames without decoding
+            if (current < next_needed)
+            {
+                if (!cap.grab()) // fast skip
+                    break;
+
+                current++;
+                continue;
+            }
+
+            // Decode only when needed
+            if (!cap.read(frame))
+                break;
+
+            // Wait if queue is full
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                cond_var.wait(lock, [&]()
+                {
+                    return queue.size() < max_queue_size;
+                });
+            }
+
+            // Push task
+            FrameTask task;
+            task.index = target_idx;
+            task.frame = frame.clone();
+
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                queue.push(std::move(task));
+            }
+
+            cond_var.notify_one();
+
+            target_idx++;
+            current++;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            done = true;
+        }
+
+        cond_var.notify_all(); });
+
+        // Workers
+        std::vector<std::thread> workers;
+        workers.reserve(args.workers);
+
+        for (int t = 0; t < args.workers; ++t)
+        {
+            workers.emplace_back([&]()
+                                 {
+            while (true)
+            {
+                FrameTask task;
+
+                {
+                    std::unique_lock<std::mutex> lock(mtx);
+                    cond_var.wait(lock, [&]()
+                    {
+                        return !queue.empty() || done;
+                    });
+
+                    if (queue.empty())
+                    {
+                        if (done) return;
+                        continue;
+                    }
+
+                    task = std::move(queue.front());
+                    queue.pop();
+                }
+
+                cv::Mat frame = std::move(task.frame);
+
+                if (args.trim && video_info.bounds)
+                {
+                    frame = CropImage(frame, *video_info.bounds);
+                }
+
+                colors[task.index] = extractor(frame);
+
+                cond_var.notify_one(); // free space
+            } });
+        }
+
+        producer.join();
+        for (auto &w : workers)
+            w.join();
+
+        return colors;
+    }
+
+    std::vector<cv::Mat> ExtractStripes(
+        const app_parser::InputArgs &args,
+        const VideoInfo &video_info)
+    {
+        auto indices = ComputeFrameIndices(
+            args.start_frame,
+            args.end_frame,
+            args.nframes);
+
+        std::vector<cv::Mat> stripes(indices.size());
+        auto extractor = app_frame_extractor::getStripeFunction();
+
+        std::queue<FrameTask> queue;
+        std::mutex mtx;
+        std::condition_variable cond_var;
+        bool done = false;
+
+        // Producer
+        std::thread producer([&]()
+                             {
+            cv::VideoCapture cap(args.input_video_path);
+            if (!cap.isOpened())
+                throw std::runtime_error("video_processor: Failed to open video");
+
+            int current = 0;
+            int target_idx = 0;
+
+            cv::Mat frame;
+            while (true)
+            {
+                if (!cap.read(frame))
+                    break;
+
+                while (target_idx < (int)indices.size() &&
+                    current >= indices[target_idx])
+                {
+                    FrameTask task;
+                    task.index = target_idx;
+                    task.frame = frame.clone(); // deep copy
+
+                    {
+                        std::lock_guard<std::mutex> lock(mtx);
+                        queue.push(std::move(task));
+                    }
+
+                    cond_var.notify_one();
+                    target_idx++;
+                }
+
+                current++;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                done = true;
+            }
+            cond_var.notify_all(); });
+
+        // Workers
+        std::vector<std::thread> workers;
+        workers.reserve(args.workers);
+
+        for (int t = 0; t < args.workers; ++t)
+        {
+            workers.emplace_back([&]()
+                                 {
+                while (true)
+                {
+                    FrameTask task;
+
+                    {
+                        std::unique_lock<std::mutex> lock(mtx);
+                        cond_var.wait(lock, [&]()
+                        {
+                            return !queue.empty() || done;
+                        });
+
+                        if (queue.empty())
+                        {
+                            if (done) return;
+                            continue;
+                        }
+
+                        task = std::move(queue.front());
+                        queue.pop();
+                    }
+
+                    cv::Mat local_frame = task.frame;
+
+                    if (args.trim && video_info.bounds)
+                        local_frame = CropImage(local_frame, *video_info.bounds);
+
+                    stripes[task.index] = extractor(local_frame, args.bar_w);
+                } });
+        }
+
+        producer.join();
+        for (auto &w : workers)
+            w.join();
+
+        return stripes;
+    }
 }
