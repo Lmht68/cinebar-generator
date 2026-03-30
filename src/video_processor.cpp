@@ -268,134 +268,46 @@ namespace app_video_processor
             args.start_frame,
             args.end_frame,
             args.nframes);
-
-        for (int idx : indices)
-        {
-            if (idx < args.start_frame || idx > args.end_frame)
-            {
-                throw std::runtime_error("video_processor: Frame index out of bounds");
-            }
-        }
-
         std::vector<cv::Vec3b> colors(indices.size());
-        std::queue<FrameTask> queue;
-        std::mutex mtx;
-        std::condition_variable cond_var;
-
-        bool done = false;
-        const size_t max_queue_size = std::max(2 * args.workers, 4);
-
-        // Producer
-        std::thread producer([&]()
-                             {
         cv::VideoCapture cap(args.input_video_path);
+
         if (!cap.isOpened())
+        {
             throw std::runtime_error("video_processor: Failed to open video");
+        }
 
         int current = 0;
         int target_idx = 0;
-
         cv::Mat frame;
 
-        while (true)
+        while (target_idx < static_cast<int>(indices.size()))
         {
-            // If we've already processed all target frames → stop early
-            if (target_idx >= (int)indices.size())
-                break;
-
             int next_needed = indices[target_idx];
 
-            // Skip frames without decoding
+            // Skip frames
             if (current < next_needed)
             {
-                if (!cap.grab()) // fast skip
+                if (!cap.grab())
                     break;
-
                 current++;
                 continue;
             }
 
-            // Decode only when needed
+            // Read only needed frame
             if (!cap.read(frame))
                 break;
 
-            // Wait if queue is full
+            cv::Mat processed = frame;
+
+            if (args.trim && video_info.bounds)
             {
-                std::unique_lock<std::mutex> lock(mtx);
-                cond_var.wait(lock, [&]()
-                {
-                    return queue.size() < max_queue_size;
-                });
+                processed = CropImage(processed, *video_info.bounds);
             }
 
-            // Push task
-            FrameTask task;
-            task.index = target_idx;
-            task.frame = frame.clone();
-
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                queue.push(std::move(task));
-            }
-
-            cond_var.notify_one();
-
+            colors[target_idx] = extractor(processed);
             target_idx++;
             current++;
         }
-
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            done = true;
-        }
-
-        cond_var.notify_all(); });
-
-        // Workers
-        std::vector<std::thread> workers;
-        workers.reserve(args.workers);
-
-        for (int t = 0; t < args.workers; ++t)
-        {
-            workers.emplace_back([&]()
-                                 {
-            while (true)
-            {
-                FrameTask task;
-
-                {
-                    std::unique_lock<std::mutex> lock(mtx);
-                    cond_var.wait(lock, [&]()
-                    {
-                        return !queue.empty() || done;
-                    });
-
-                    if (queue.empty())
-                    {
-                        if (done) return;
-                        continue;
-                    }
-
-                    task = std::move(queue.front());
-                    queue.pop();
-                }
-
-                cv::Mat frame = std::move(task.frame);
-
-                if (args.trim && video_info.bounds)
-                {
-                    frame = CropImage(frame, *video_info.bounds);
-                }
-
-                colors[task.index] = extractor(frame);
-
-                cond_var.notify_one(); // free space
-            } });
-        }
-
-        producer.join();
-        for (auto &w : workers)
-            w.join();
 
         return colors;
     }
@@ -408,97 +320,47 @@ namespace app_video_processor
             args.start_frame,
             args.end_frame,
             args.nframes);
-
         std::vector<cv::Mat> stripes(indices.size());
         auto extractor = app_frame_extractor::getStripeFunction();
+        cv::VideoCapture cap(args.input_video_path);
 
-        std::queue<FrameTask> queue;
-        std::mutex mtx;
-        std::condition_variable cond_var;
-        bool done = false;
-
-        // Producer
-        std::thread producer([&]()
-                             {
-            cv::VideoCapture cap(args.input_video_path);
-            if (!cap.isOpened())
-                throw std::runtime_error("video_processor: Failed to open video");
-
-            int current = 0;
-            int target_idx = 0;
-
-            cv::Mat frame;
-            while (true)
-            {
-                if (!cap.read(frame))
-                    break;
-
-                while (target_idx < (int)indices.size() &&
-                    current >= indices[target_idx])
-                {
-                    FrameTask task;
-                    task.index = target_idx;
-                    task.frame = frame.clone(); // deep copy
-
-                    {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        queue.push(std::move(task));
-                    }
-
-                    cond_var.notify_one();
-                    target_idx++;
-                }
-
-                current++;
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                done = true;
-            }
-            cond_var.notify_all(); });
-
-        // Workers
-        std::vector<std::thread> workers;
-        workers.reserve(args.workers);
-
-        for (int t = 0; t < args.workers; ++t)
+        if (!cap.isOpened())
         {
-            workers.emplace_back([&]()
-                                 {
-                while (true)
-                {
-                    FrameTask task;
-
-                    {
-                        std::unique_lock<std::mutex> lock(mtx);
-                        cond_var.wait(lock, [&]()
-                        {
-                            return !queue.empty() || done;
-                        });
-
-                        if (queue.empty())
-                        {
-                            if (done) return;
-                            continue;
-                        }
-
-                        task = std::move(queue.front());
-                        queue.pop();
-                    }
-
-                    cv::Mat local_frame = task.frame;
-
-                    if (args.trim && video_info.bounds)
-                        local_frame = CropImage(local_frame, *video_info.bounds);
-
-                    stripes[task.index] = extractor(local_frame, args.bar_w);
-                } });
+            throw std::runtime_error("video_processor: Failed to open video");
         }
 
-        producer.join();
-        for (auto &w : workers)
-            w.join();
+        int current = 0;
+        int target_idx = 0;
+        cv::Mat frame;
+
+        while (target_idx < static_cast<int>(indices.size()))
+        {
+            int next_needed = indices[target_idx];
+
+            // Skip frames
+            if (current < next_needed)
+            {
+                if (!cap.grab())
+                    break;
+                current++;
+                continue;
+            }
+
+            // Decode only when needed
+            if (!cap.read(frame))
+                break;
+
+            cv::Mat processed = frame;
+
+            if (args.trim && video_info.bounds)
+            {
+                processed = CropImage(processed, *video_info.bounds);
+            }
+
+            stripes[target_idx] = extractor(processed, args.bar_w);
+            target_idx++;
+            current++;
+        }
 
         return stripes;
     }

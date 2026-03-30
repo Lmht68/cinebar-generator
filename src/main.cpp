@@ -1,11 +1,7 @@
-﻿// cinebar-generator.cpp : Defines the entry point for the application.
-//
-
 #include "parser.h"
 #include "logger.h"
 #include "video_processor.h"
-
-#include <opencv2/opencv.hpp>
+#include "cinebar_generator.h"
 
 #include <iostream>
 #include <string>
@@ -31,39 +27,6 @@ namespace
         }
         // Clear line when finished
         std::cout << "\r" << std::string(prefix.size() + 2, ' ') << "\r";
-    }
-
-    cv::Mat BuildHorizontalBarcode(const std::vector<cv::Vec3b> &colors, const app_parser::InputArgs &args)
-    {
-        if (colors.empty())
-            throw std::runtime_error("barcode_generator: No colors provided");
-
-        int total_width = static_cast<int>(colors.size()) * args.bar_w;
-        cv::Mat barcode(args.height, total_width, CV_8UC3);
-
-        for (int y = 0; y < args.height; ++y)
-        {
-            cv::Vec3b *row = barcode.ptr<cv::Vec3b>(y);
-
-            for (int i = 0; i < colors.size(); ++i)
-            {
-                int x_start = i * args.bar_w;
-                for (int dx = 0; dx < args.bar_w; ++dx)
-                    row[x_start + dx] = colors[i];
-            }
-        }
-
-        return barcode;
-    }
-
-    cv::Mat BuildHorizontalBarcodeFromStripes(const std::vector<cv::Mat> &stripes)
-    {
-        if (stripes.empty())
-            throw std::runtime_error("barcode_generator: No stripes provided");
-
-        cv::Mat barcode;
-        cv::hconcat(stripes, barcode);
-        return barcode;
     }
 }
 
@@ -209,7 +172,7 @@ int main(int argc, char **argv)
         if (args.method == app_parser::Method::Stripe)
         {
             auto stripes = app_video_processor::ExtractStripes(args, video_info);
-            barcode = BuildHorizontalBarcodeFromStripes(stripes); // stripes only have horizontal barcode shape
+            barcode = cinebar::BuildHorizontalBarcodeFromStripes(stripes); // stripes only have horizontal barcode shape
         }
         else
         {
@@ -218,7 +181,7 @@ int main(int argc, char **argv)
 
             if (args.shape == app_parser::BarcodeShape::Horizontal)
             {
-                barcode = BuildHorizontalBarcode(colors, args);
+                barcode = cinebar::BuildHorizontalBarcode(colors, args);
             }
             else
             {

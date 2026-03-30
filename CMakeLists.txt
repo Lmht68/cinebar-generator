@@ -21,6 +21,7 @@ find_package(GTest REQUIRED)
 
 # Library (shared)
 add_library(cinebar-lib
+    src/cinebar_generator.cpp
     src/video_processor.cpp
     src/frame_extractor.cpp
     src/parser.cpp
@@ -39,7 +40,7 @@ target_link_libraries(cinebar-lib PUBLIC
 
 # Main executable
 add_executable(cinebar-generator
-    src/cinebar-generator.cpp
+    src/main.cpp
 )
 
 target_link_libraries(cinebar-generator PRIVATE

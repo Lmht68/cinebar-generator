@@ -63,13 +63,6 @@ namespace app_video_processor
 		}
 	}
 
-	constexpr size_t kMaxThreadQueue = 16; // prevents memory blowup
-	struct FrameTask
-	{
-		int index;
-		cv::Mat frame;
-	};
-
 	VideoInfo LoadVideoInfo(const std::string &video_path);
 	int GetFrameCountFromInterval(int frame_count, double fps, double interval);
 	int NframesFromInterval(const VideoInfo &video_info, double interval);
