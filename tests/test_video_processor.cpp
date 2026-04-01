@@ -76,7 +76,7 @@ namespace app_video_processor
 
     TEST(VideoProcessorTest, InvalidInterval)
     {
-        VideoInfo info{
+        cinebar_types::VideoInfo info{
             {},   // capture (not used in this function)
             300,  // frame_count
             30.0, // fps
@@ -90,7 +90,7 @@ namespace app_video_processor
 
     TEST(VideoProcessorTest, InvalidFrameCount)
     {
-        VideoInfo info{
+        cinebar_types::VideoInfo info{
             {},
             0, // invalid frame_count
             30.0,
@@ -162,7 +162,7 @@ namespace app_video_processor
     TEST(CropImageTest, CropsCorrectRegion)
     {
         cv::Mat img(100, 200, CV_8UC1, cv::Scalar(255));
-        VideoBounds bounds{10, 20, 110, 80};
+        cinebar_types::VideoBounds bounds{10, 20, 110, 80};
 
         cv::Mat cropped = CropImage(img, bounds);
 
@@ -178,7 +178,7 @@ namespace app_video_processor
             for (int x = 0; x < img.cols; x++)
                 img.at<uchar>(y, x) = x;
 
-        VideoBounds bounds{50, 10, 100, 60};
+        cinebar_types::VideoBounds bounds{50, 10, 100, 60};
         cv::Mat cropped = CropImage(img, bounds);
 
         EXPECT_EQ(cropped.at<uchar>(0, 0), 50);

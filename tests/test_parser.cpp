@@ -1,4 +1,5 @@
 #include "../src/parser.h"
+#include "../src/types.h"
 
 #include <gtest/gtest.h>
 
@@ -29,7 +30,7 @@ namespace app_parser
                 fs::remove(temp_video);
         }
 
-        cinebar::InputArgs Parse(const std::vector<std::string> &args)
+        cinebar_types::InputArgs Parse(const std::vector<std::string> &args)
         {
             std::vector<char *> argv;
             argv.reserve(args.size());
@@ -105,12 +106,12 @@ namespace app_parser
     TEST_F(ParserTest, MethodOptionParsesCorrectly)
     {
         // Test each valid method string
-        std::vector<std::pair<std::string, Method>> test_cases = {
-            {"avg", Method::Avg},
-            {"smoothed", Method::Smoothed},
-            {"kmeans", Method::KMeans},
-            {"hsv", Method::HSV},
-            {"stripe", Method::Stripe}};
+        std::vector<std::pair<std::string, cinebar_types::Method>> test_cases = {
+            {"avg", cinebar_types::Method::Avg},
+            {"smoothed", cinebar_types::Method::Smoothed},
+            {"kmeans", cinebar_types::Method::KMeans},
+            {"hsv", cinebar_types::Method::HSV},
+            {"stripe", cinebar_types::Method::Stripe}};
 
         for (const auto &[str, expected] : test_cases)
         {

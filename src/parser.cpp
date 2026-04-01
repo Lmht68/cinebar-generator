@@ -4,10 +4,10 @@
 
 namespace app_parser
 {
-	cinebar::InputArgs ParseArgs(int argc, char **argv)
+	cinebar_types::InputArgs ParseArgs(int argc, char **argv)
 	{
 		CLI::App app("CineBar CLI - Movie Barcode Generator");
-		cinebar::InputArgs args;
+		cinebar_types::InputArgs args;
 
 		app.add_flag("-v,--version", args.show_info, "Display application version info");
 		app.add_option("input", args.input_video_path, "Input video file")->check(CLI::ExistingFile);
@@ -15,13 +15,13 @@ namespace app_parser
 		auto interval_opt = app.add_option("-i,--interval", args.interval, "Frame sampling interval in seconds")->check(CLI::PositiveNumber);
 		auto nframes_opt = app.add_option("-n,--frames", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
 		app.add_option("-m,--method", args.method, "Color extraction method")
-			->transform(CLI::CheckedTransformer(kArgMethodMap))
+			->transform(CLI::CheckedTransformer(cinebar_types::kArgMethodMap))
 			->description("Method: avg | smoothed | kmeans | hsv | stripe");
 		app.add_option("-W,--bar-width", args.bar_w, "Width of each barcode stripe in the output barcode image, in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-w,--workers", args.workers, "Number of worker threads to use")->check(CLI::PositiveNumber);
 		app.add_flag("-c, --circular", [&](std::int64_t)
-					 { args.shape = cinebar::BarcodeShape::Circular; });
+					 { args.shape = cinebar_types::BarcodeShape::Circular; });
 		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);

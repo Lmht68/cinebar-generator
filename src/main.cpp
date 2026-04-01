@@ -78,7 +78,7 @@ int main(int argc, char **argv)
         args.nframes = std::min(args.nframes, video_info.frame_count);
 
         // Use original height if not specified for horizontal barcodes
-        if (args.shape == cinebar::BarcodeShape::Horizontal && args.height <= 0)
+        if (args.shape == cinebar_types::BarcodeShape::Horizontal && args.height <= 0)
         {
             args.height = video_info.height;
             args.width = args.bar_w * args.nframes;
@@ -102,8 +102,8 @@ int main(int argc, char **argv)
             "Output image", args.output_img_path,
             "Sampling interval (s)", args.interval,
             "Frames sampled", args.nframes,
-            "Method", cinebar::ToString(args.method),
-            "Shape", cinebar::ToString(args.shape),
+            "Method", cinebar_types::ToString(args.method),
+            "Shape", cinebar_types::ToString(args.shape),
             "Stripe width (px)", args.bar_w,
             "Output resolution (px)", args.width, args.height);
         spdlog::info(
@@ -144,8 +144,8 @@ int main(int argc, char **argv)
                 "Trimming info:\n"
                 "   {:<22}: {}\n"
                 "{}",
-                "Box type", app_video_processor::ToString(video_info.box_type),
-                video_info.box_type != app_video_processor::BoxType::None
+                "Box type", cinebar_types::ToString(video_info.box_type),
+                video_info.box_type != cinebar_types::BoxType::None
                     ? fmt::format(
                           "   {:<22}: {}x{}\n"
                           "   {:<22}: Top={}, Bottom={}, Left={}, Right={}",
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
                 " threads: Extracting frames...");
         cv::Mat barcode;
 
-        if (args.method == cinebar::Method::Stripe)
+        if (args.method == cinebar_types::Method::Stripe)
         {
             auto stripes = app_video_processor::ExtractStripes(args, video_info);
             barcode = cinebar::BuildHorizontalBarcodeFromStripes(stripes); // stripes only have horizontal barcode shape
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
             auto extractor = app_frame_extractor::getColorFunction(args.method);
             auto colors = app_video_processor::ExtractColors(args, video_info, extractor);
 
-            if (args.shape == cinebar::BarcodeShape::Horizontal)
+            if (args.shape == cinebar_types::BarcodeShape::Horizontal)
             {
                 barcode = cinebar::BuildHorizontalBarcode(colors, args);
             }

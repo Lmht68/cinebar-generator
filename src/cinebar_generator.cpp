@@ -3,7 +3,7 @@
 
 namespace cinebar
 {
-    cv::Mat BuildHorizontalBarcode(const std::vector<cv::Vec3b> &colors, const InputArgs &args)
+    cv::Mat BuildHorizontalBarcode(const std::vector<cv::Vec3b> &colors, const cinebar_types::InputArgs &args)
     {
         if (colors.empty())
             throw std::runtime_error("cinebar_generator: No colors provided");

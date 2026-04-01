@@ -50,7 +50,7 @@ namespace
 namespace app_video_processor
 {
     // --- Video Info
-    VideoInfo LoadVideoInfo(const std::string &video_path)
+    cinebar_types::VideoInfo LoadVideoInfo(const std::string &video_path)
     {
         cv::VideoCapture video(video_path, cv::CAP_FFMPEG);
 
@@ -85,7 +85,7 @@ namespace app_video_processor
         return static_cast<int>(std::round(duration / interval));
     }
 
-    int NframesFromInterval(const VideoInfo &video_info, double interval)
+    int NframesFromInterval(const cinebar_types::VideoInfo &video_info, double interval)
     {
         if (interval <= 0.0)
             throw std::invalid_argument("video_processor: Interval must be greater than 0");
@@ -95,7 +95,7 @@ namespace app_video_processor
     // ---
 
     // --- Handle Letterbox: black bars on top and bottom, Pillarbox: black bars on left and right
-    std::optional<VideoBounds> DetectBounds(const cv::Mat &frame_grayed)
+    std::optional<cinebar_types::VideoBounds> DetectBounds(const cv::Mat &frame_grayed)
     {
         // downscale for faster processing
         cv::Mat frame_downscaled;
@@ -154,7 +154,7 @@ namespace app_video_processor
         if (left >= right || top >= bottom)
             return std::nullopt;
 
-        VideoBounds bounds{
+        cinebar_types::VideoBounds bounds{
             static_cast<int>(left / kDownScaleFactor),
             static_cast<int>(top / kDownScaleFactor),
             static_cast<int>(right / kDownScaleFactor),
@@ -163,7 +163,7 @@ namespace app_video_processor
         return bounds;
     }
 
-    cv::Mat CropImage(const cv::Mat &frame, const VideoBounds &bounds)
+    cv::Mat CropImage(const cv::Mat &frame, const cinebar_types::VideoBounds &bounds)
     {
         cv::Rect roi(
             bounds.left,
@@ -174,13 +174,13 @@ namespace app_video_processor
         return frame(roi);
     }
 
-    bool DetermineVideoBounds(VideoInfo &video_info,
-                              VideoBounds &bounds)
+    bool DetermineVideoBounds(cinebar_types::VideoInfo &video_info,
+                              cinebar_types::VideoBounds &bounds)
     {
         cv::VideoCapture &cap = video_info.capture;
         int total_frames = video_info.frame_count;
         double interval = static_cast<double>(total_frames) / kDefaultSampleFrames;
-        std::vector<VideoBounds> detections;
+        std::vector<cinebar_types::VideoBounds> detections;
         cv::Mat frame;
 
         for (int i = 0; i < kDefaultSampleFrames; i++)
@@ -218,7 +218,7 @@ namespace app_video_processor
             return v[v.size() / 2];
         };
 
-        VideoBounds median_bounds{
+        cinebar_types::VideoBounds median_bounds{
             median(lefts),
             median(tops),
             median(rights),
@@ -235,9 +235,9 @@ namespace app_video_processor
         return true;
     }
 
-    void DetectVideoBoxType(VideoInfo &video_info)
+    void DetectVideoBoxType(cinebar_types::VideoInfo &video_info)
     {
-        VideoBounds bounds;
+        cinebar_types::VideoBounds bounds;
 
         if (!DetermineVideoBounds(video_info, bounds))
             return;
@@ -249,19 +249,19 @@ namespace app_video_processor
         bool pillarbox = crop_w < video_info.width;
 
         if (letterbox && pillarbox)
-            video_info.box_type = BoxType::Windowbox;
+            video_info.box_type = cinebar_types::BoxType::Windowbox;
         else if (letterbox)
-            video_info.box_type = BoxType::Letterbox;
+            video_info.box_type = cinebar_types::BoxType::Letterbox;
         else if (pillarbox)
-            video_info.box_type = BoxType::Pillarbox;
+            video_info.box_type = cinebar_types::BoxType::Pillarbox;
         else
-            video_info.box_type = BoxType::None;
+            video_info.box_type = cinebar_types::BoxType::None;
     }
     // ---
 
     std::vector<cv::Vec3b> ExtractColors(
-        const cinebar::InputArgs &args,
-        const VideoInfo &video_info,
+        const cinebar_types::InputArgs &args,
+        const cinebar_types::VideoInfo &video_info,
         const app_frame_extractor::ColorFunc &extractor)
     {
         auto indices = ComputeFrameIndices(
@@ -313,8 +313,8 @@ namespace app_video_processor
     }
 
     std::vector<cv::Mat> ExtractStripes(
-        const cinebar::InputArgs &args,
-        const VideoInfo &video_info)
+        const cinebar_types::InputArgs &args,
+        const cinebar_types::VideoInfo &video_info)
     {
         auto indices = ComputeFrameIndices(
             args.start_frame,
