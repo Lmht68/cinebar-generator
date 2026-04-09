@@ -9,29 +9,19 @@
 #include <atomic>
 #include <chrono>
 
-namespace
-{
-    // Global atomic flag to signal spinner to stop
-    std::atomic<bool> spinner_stop(false);
-
-    // Spinner function
-    void spinner(const std::string &prefix)
-    {
-        const std::string spin_chars = "|/-\\";
-        int i = 0;
-        while (!spinner_stop.load())
-        {
-            std::cout << "\r" << prefix << spin_chars[i % spin_chars.size()] << std::flush;
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            ++i;
-        }
-        // Clear line when finished
-        std::cout << "\r" << std::string(prefix.size() + 2, ' ') << "\r";
-    }
-}
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+    // Set Windows console to UTF-8
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     try
     {
         app_logger::InitLogger();
@@ -73,7 +63,7 @@ int main(int argc, char **argv)
             args.nframes = video_info.frame_count;
             args.interval = 1 / video_info.fps;
         }
-        std::cout << video_info.frame_count << std::endl;
+
         // Ensure nframes does not exceed total frame count
         args.nframes = std::min(args.nframes, video_info.frame_count);
 
@@ -88,6 +78,18 @@ int main(int argc, char **argv)
             args.height = args.width = args.bar_w * args.nframes;
         }
 
+        spdlog::info(
+            "Video info:\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
+            "   {:<22}: {}x{}",
+            "Fps", video_info.fps,
+            "Duration (s)", video_info.duration,
+            "Frames", video_info.frame_count,
+            "Size (bytes)", video_info.size,
+            "Resolution", video_info.width, video_info.height);
         spdlog::info(
             "Cinebar settings:\n"
             "   {:<22}: {}\n"
@@ -106,24 +108,10 @@ int main(int argc, char **argv)
             "Shape", cinebar_types::ToString(args.shape),
             "Stripe width (px)", args.bar_w,
             "Output resolution (px)", args.width, args.height);
-        spdlog::info(
-            "Video info:\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}\n"
-            "   {:<22}: {}x{}",
-            "Fps", video_info.fps,
-            "Duration (s)", video_info.duration,
-            "Frames", video_info.frame_count,
-            "Size (bytes)", video_info.size,
-            "Resolution", video_info.width, video_info.height);
 
         // Detect letterbox / pillarbox trimming, if specified
         if (args.trim)
         {
-            spinner_stop.store(false);
-            std::thread spinner_thread(spinner, " Trimming enabled: Detecting letterboxing/pillarboxing...");
             app_video_processor::DetectVideoBoxType(video_info);
             int top_bar = 0, bottom_bar = 0, left_bar = 0, right_bar = 0;
 
@@ -138,8 +126,6 @@ int main(int argc, char **argv)
 
             int content_w = static_cast<int>(video_info.width) - left_bar - right_bar;
             int content_h = static_cast<int>(video_info.height) - top_bar - bottom_bar;
-            spinner_stop.store(true);
-            spinner_thread.join();
             spdlog::info(
                 "Trimming info:\n"
                 "   {:<22}: {}\n"
@@ -157,10 +143,6 @@ int main(int argc, char **argv)
         if (args.end_frame == 0)
             args.end_frame = video_info.frame_count - 1; // Ensure end_frame is set to the last frame if it was 0
 
-        spinner_stop.store(false);
-        std::thread spinner_thread(
-            spinner,
-            std::string(" Extracting frames..."));
         cv::Mat barcode;
 
         if (args.method == cinebar_types::Method::Stripe)
@@ -187,8 +169,6 @@ int main(int argc, char **argv)
         }
 
         cv::imwrite(args.output_img_path, barcode);
-        spinner_stop.store(true);
-        spinner_thread.join();
         spdlog::info("Cinebar generated successfully: {}", args.output_img_path);
     }
     catch (const CLI::ParseError &pe)
