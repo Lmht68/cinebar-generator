@@ -19,6 +19,16 @@ find_package(CLI11 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GTest REQUIRED)
 
+include(FetchContent)
+
+FetchContent_Declare(
+  indicators
+  GIT_REPOSITORY https://github.com/p-ranav/indicators.git
+  GIT_TAG master
+)
+
+FetchContent_MakeAvailable(indicators)
+
 # Library (shared)
 add_library(cinebar-lib
     src/cinebar_generator.cpp
@@ -36,6 +46,7 @@ target_link_libraries(cinebar-lib PUBLIC
     spdlog::spdlog
     CLI11::CLI11
     ${OpenCV_LIBS}
+    indicators
 )
 
 # Main executable
