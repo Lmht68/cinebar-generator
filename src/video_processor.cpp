@@ -1,13 +1,9 @@
 #include "video_processor.h"
+#include "utility.h"
 
 #include <opencv2/opencv.hpp>
-#include <indicators/cursor_control.hpp>
-#include <indicators/progress_spinner.hpp>
-#include <indicators/block_progress_bar.hpp>
 
 #include <vector>
-
-using namespace indicators;
 
 namespace app_video_processor
 {
@@ -197,40 +193,13 @@ namespace app_video_processor
     void DetectVideoBoxType(cinebar_types::VideoInfo &video_info)
     {
         // setting up progress spinner
-        show_console_cursor(false);
-        indicators::ProgressSpinner spinner{
-            option::PostfixText{"Trimming enabled: Detecting letterboxing/pillarboxing"},
-            option::ForegroundColor{Color::yellow},
-            option::ShowPercentage{false},
-            option::SpinnerStates{std::vector<std::string>{"▖", "▘", "▝", "▗"}},
-            option::FontStyles{
-                std::vector<FontStyle>{FontStyle::bold}}};
-        // Update spinner state
-        auto job = [&spinner]()
-        {
-            while (true)
-            {
-                if (spinner.is_completed())
-                {
-                    spinner.set_option(option::ForegroundColor{Color::green});
-                    spinner.set_option(option::ShowSpinner{false});
-                    spinner.set_option(option::PostfixText{"Trimming completed"});
-                    spinner.mark_as_completed();
-                    break;
-                }
-                else
-                    spinner.tick();
-                std::this_thread::sleep_for(std::chrono::milliseconds(40));
-            }
-        };
-        std::thread thread(job);
+        auto spinner = app_utility::CreateProgressSpinner("Trimming enabled: Detecting letterboxing/pillarboxing");
+        std::thread spinner_thread = app_utility::StartSpinnerJob(spinner);
         // detect bounds
         cinebar_types::VideoBounds bounds;
         bool success = !DetermineVideoBounds(video_info, bounds);
         // complete spinner
-        spinner.mark_as_completed();
-        show_console_cursor(true);
-        thread.join();
+        app_utility::StopSpinnerJob(spinner, spinner_thread);
 
         if (!success)
             return;
@@ -257,22 +226,15 @@ namespace app_video_processor
         cinebar_types::VideoInfo &video_info,
         const app_frame_extractor::ColorFunc &extractor)
     {
-        // setting up progress bar
-        show_console_cursor(false);
-        BlockProgressBar bar{
-            option::PrefixText{"Extracting frames: "},
-            option::BarWidth{80},
-            option::ForegroundColor{Color::yellow},
-            option::ShowPercentage{true},
-            option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
-            option::MaxProgress{args.nframes}};
-        // setting up parameters for frame extraction
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
             throw std::runtime_error("video_processor: Failed to open video");
 
+        // setting up progress bar
+        auto bar = app_utility::CreateProgressBar("Processing frames ", args.nframes);
+        // setting up parameters for frame processing
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t segment_length = args.end_frame - args.start_frame + 1;
         const size_t step = segment_length / args.nframes;
@@ -285,7 +247,10 @@ namespace app_video_processor
         while (current <= args.end_frame && frame_counter < args.nframes)
         {
             if (!cap.read(frame))
-                throw std::runtime_error("video_processor: Failed to read frame");
+            {
+                app_utility::CancelProgressBar(bar);
+                throw std::runtime_error("video_processor: Failed to read frame ");
+            }
 
             if (do_trim)
                 CropImage(frame, *video_info.bounds);
@@ -294,22 +259,20 @@ namespace app_video_processor
             ++current;
             // update progress bar
             ++frame_counter;
-            bar.tick();
-            bar.set_option(option::PostfixText{std::to_string(frame_counter) + "/" + std::to_string(args.nframes)});
+            app_utility::UpdateProgressBar(bar, frame_counter, args.nframes);
 
-            for (int i = 0; i < step - 1 && current < args.end_frame; ++i)
+            for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
             {
                 if (!cap.grab())
-                    throw std::runtime_error("video_processor: Failed to grab frame");
+                {
+                    app_utility::CancelProgressBar(bar);
+                    throw std::runtime_error("video_processor: Failed to grab frame ");
+                }
 
                 ++current;
             }
         }
 
-        bar.set_option(option::ForegroundColor{Color::green});
-        bar.set_option(option::PrefixText{"Frame extraction completed "});
-        bar.mark_as_completed();
-        show_console_cursor(true);
         return colors;
     }
 
@@ -317,22 +280,15 @@ namespace app_video_processor
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info)
     {
-        // setting up progress bar
-        show_console_cursor(false);
-        BlockProgressBar bar{
-            option::PrefixText{"Extracting frames: "},
-            option::BarWidth{80},
-            option::ForegroundColor{Color::yellow},
-            option::ShowPercentage{true},
-            option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
-            option::MaxProgress{args.nframes}};
-        // setting up parameters for frame extraction
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
             throw std::runtime_error("video_processor: Failed to open video");
 
+        // setting up progress bar
+        auto bar = app_utility::CreateProgressBar("Processing frames ", args.nframes);
+        // setting up parameters for frame processing
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t segment_length = args.end_frame - args.start_frame + 1;
         const size_t step = segment_length / args.nframes;
@@ -346,7 +302,10 @@ namespace app_video_processor
         while (current <= args.end_frame && frame_counter < args.nframes)
         {
             if (!cap.read(frame))
-                throw std::runtime_error("video_processor: Failed to read frame");
+            {
+                app_utility::CancelProgressBar(bar);
+                throw std::runtime_error("video_processor: Failed to read frame ");
+            }
 
             if (do_trim)
                 CropImage(frame, *video_info.bounds);
@@ -355,23 +314,21 @@ namespace app_video_processor
             ++current;
             // update progress bar
             ++frame_counter;
-            bar.tick();
-            bar.set_option(option::PostfixText{std::to_string(frame_counter) + "/" + std::to_string(args.nframes)});
+            app_utility::UpdateProgressBar(bar, frame_counter, args.nframes);
 
             // skip (step - 1) frames
-            for (int i = 0; i < step - 1 && current < args.end_frame; ++i)
+            for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
             {
                 if (!cap.grab())
-                    throw std::runtime_error("video_processor: Failed to grab frame");
+                {
+                    app_utility::CancelProgressBar(bar);
+                    throw std::runtime_error("video_processor: Failed to grab frame ");
+                }
 
                 ++current;
             }
         }
 
-        bar.set_option(option::ForegroundColor{Color::green});
-        bar.set_option(option::PrefixText{"Frame extraction completed "});
-        bar.mark_as_completed();
-        show_console_cursor(true);
         return stripes;
     }
 }
