@@ -24,81 +24,93 @@ namespace app_video_processor
             std::runtime_error);
     }
 
-    TEST(VideoProcessorTest, GetFrameCount_InvalidInterval)
+    TEST(NframesFromIntervalTest, BasicValidCase)
+    {
+        size_t frame_count = 300;
+        double fps = 30.0;
+        double interval = 1.0;
+
+        // duration = 10s → 10 / 1 = 10 frames
+        size_t result = NframesFromInterval(frame_count, interval, fps);
+        EXPECT_EQ(result, 10);
+    }
+
+    TEST(NframesFromIntervalTest, NonIntegerResultRoundsCorrectly)
+    {
+        size_t frame_count = 300;
+        double fps = 30.0;
+        double interval = 0.7;
+
+        // duration = 10s → 10 / 0.7 ≈ 14.285 → rounds to 14
+        size_t result = NframesFromInterval(frame_count, interval, fps);
+        EXPECT_EQ(result, static_cast<size_t>(std::round(10.0 / 0.7)));
+    }
+
+    TEST(NframesFromIntervalTest, LargeValues)
+    {
+        size_t frame_count = 100000;
+        double fps = 25.0;
+        double interval = 2.0;
+
+        double duration = frame_count / fps;
+        size_t expected = static_cast<size_t>(std::round(duration / interval));
+
+        EXPECT_EQ(NframesFromInterval(frame_count, interval, fps), expected);
+    }
+
+    TEST(NframesFromIntervalTest, IntervalExactlyOneFrame)
+    {
+        size_t frame_count = 60;
+        double fps = 30.0;
+        double interval = 1.0 / fps;
+
+        // duration = 2s → 2 / (1/30) = 60
+        size_t result = NframesFromInterval(frame_count, interval, fps);
+        EXPECT_EQ(result, frame_count);
+    }
+
+    TEST(NframesFromIntervalTest, ThrowsIfIntervalZero)
     {
         EXPECT_THROW(
-            GetFrameCountFromInterval(100, 30.0, 0.0),
+            NframesFromInterval(100, 0.0, 30.0),
             std::invalid_argument);
     }
 
-    TEST(VideoProcessorTest, GetFrameCount_InvalidFPS)
+    TEST(NframesFromIntervalTest, ThrowsIfIntervalNegative)
     {
         EXPECT_THROW(
-            GetFrameCountFromInterval(100, 0.0, 1.0),
+            NframesFromInterval(100, -1.0, 30.0),
+            std::invalid_argument);
+    }
+
+    TEST(NframesFromIntervalTest, ThrowsIfFpsZero)
+    {
+        EXPECT_THROW(
+            NframesFromInterval(100, 1.0, 0.0),
             std::runtime_error);
     }
 
-    TEST(VideoProcessorTest, GetFrameCount_IntervalTooSmall)
-    {
-        // frame_count = 3000; arbitrary valid
-        // fps = 30.0;         30 FPS
-        // interval = 0.01;    too small (100 FPS sampling)
-
-        EXPECT_THROW(
-            GetFrameCountFromInterval(3000, 30.0, 0.01),
-            std::invalid_argument);
-    }
-
-    TEST(VideoProcessorTest, GetFrameCount_InvalidFrameCount)
+    TEST(NframesFromIntervalTest, ThrowsIfFpsNegative)
     {
         EXPECT_THROW(
-            GetFrameCountFromInterval(0, 30.0, 1.0),
+            NframesFromInterval(100, 1.0, -30.0),
             std::runtime_error);
     }
 
-    TEST(VideoProcessorTest, GetFrameCount_ComputesCorrectValue)
+    TEST(NframesFromIntervalTest, ThrowsIfIntervalTooSmall)
     {
-        // 300 frames at 30 fps = 10 seconds
-        // interval = 2 seconds
-        // expected = round(10 / 2) = 5
-        size_t result = GetFrameCountFromInterval(300, 30.0, 2.0);
-        EXPECT_EQ(result, 5);
-    }
-
-    TEST(VideoProcessorTest, GetFrameCount_RoundsCorrectly)
-    {
-        // 100 frames at 30 fps = 3.3333 sec
-        // interval = 1 sec
-        // 3.3333 -> round -> 3
-        size_t result = GetFrameCountFromInterval(100, 30.0, 1.0);
-        EXPECT_EQ(result, 3);
-    }
-
-    TEST(VideoProcessorTest, InvalidInterval)
-    {
-        cinebar_types::VideoInfo info{
-            {},   // capture (not used in this function)
-            300,  // frame_count
-            30.0, // fps
-            1920,
-            1080};
+        double fps = 30.0;
+        double interval = (1.0 / fps) - 0.0001;
 
         EXPECT_THROW(
-            NframesFromInterval(info, 0.0),
+            NframesFromInterval(100, interval, fps),
             std::invalid_argument);
     }
 
-    TEST(VideoProcessorTest, InvalidFrameCount)
+    TEST(NframesFromIntervalTest, ThrowsIfFrameCountZero)
     {
-        cinebar_types::VideoInfo info{
-            {},
-            0, // invalid frame_count
-            30.0,
-            1920,
-            1080};
-
         EXPECT_THROW(
-            NframesFromInterval(info, 1.0),
+            NframesFromInterval(0, 1.0, 30.0),
             std::runtime_error);
     }
 

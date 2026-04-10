@@ -16,11 +16,9 @@ namespace app_video_processor
 	constexpr int kDefaultSampleFrames = 10;
 
 	cinebar_types::VideoInfo LoadVideoInfo(const std::string &video_path);
-	size_t GetFrameCountFromInterval(const size_t frame_count,
-									 const double fps,
-									 const double interval);
-	size_t NframesFromInterval(const cinebar_types::VideoInfo &video_info,
-							   const double interval);
+	size_t NframesFromInterval(const size_t frame_count,
+							   const double interval,
+							   const double fps);
 	std::optional<cinebar_types::VideoBounds> DetectBounds(const cv::Mat &frame_grayed);
 	void CropImage(cv::Mat &frame,
 				   const cinebar_types::VideoBounds &bounds);

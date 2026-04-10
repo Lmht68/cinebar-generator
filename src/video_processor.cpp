@@ -25,30 +25,21 @@ namespace app_video_processor
         return {std::move(video), fps, duration, size, frame_count, width, height};
     }
 
-    size_t GetFrameCountFromInterval(const size_t frame_count, const double fps, const double interval)
+    size_t NframesFromInterval(const size_t frame_count,
+                               const double interval,
+                               const double fps)
     {
         if (interval <= 0.0)
             throw std::invalid_argument("video_processor: Interval must be greater than 0");
-
         if (fps <= 0.0)
             throw std::runtime_error("video_processor: Invalid FPS value");
-
         if (interval < 1.0 / fps)
             throw std::invalid_argument("video_processor: Interval too small for video FPS");
-
         if (frame_count <= 0.0)
             throw std::runtime_error("video_processor: Invalid frame count value");
 
         double duration = frame_count / fps;
         return static_cast<size_t>(std::round(duration / interval));
-    }
-
-    size_t NframesFromInterval(const cinebar_types::VideoInfo &video_info, const double interval)
-    {
-        if (interval <= 0.0)
-            throw std::invalid_argument("video_processor: Interval must be greater than 0");
-
-        return GetFrameCountFromInterval(video_info.frame_count, video_info.fps, interval);
     }
     // ---
 
