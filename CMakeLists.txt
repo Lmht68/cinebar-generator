@@ -65,6 +65,7 @@ enable_testing()
 add_executable(cinebar-generator-tests
     tests/test_video_processor.cpp
     tests/test_frame_extractor.cpp
+    tests/test_cinebar_generator.cpp
     tests/test_parser.cpp
 )
 
