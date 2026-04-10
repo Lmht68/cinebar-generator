@@ -4,6 +4,7 @@
 #include "types.h"
 #include "parser.h"
 #include "frame_extractor.h"
+#include "utility.h"
 
 #include <opencv2/videoio.hpp>
 
@@ -22,15 +23,19 @@ namespace app_video_processor
 	std::optional<cinebar_types::VideoBounds> DetectBounds(const cv::Mat &frame_grayed);
 	void CropImage(cv::Mat &frame,
 				   const cinebar_types::VideoBounds &bounds);
-	bool DetermineVideoBounds(cinebar_types::VideoInfo &video_info,
-							  cinebar_types::VideoBounds &bounds);
-	void DetectVideoBoxType(cinebar_types::VideoInfo &video_info);
+	void DetectVideoBoxType(cinebar_types::VideoInfo &video_info,
+							ProgressCbk on_start = nullptr,
+							ProgressCbk on_finish = nullptr);
 
 	std::vector<cv::Vec3b> ExtractColors(const cinebar_types::InputArgs &args,
 										 cinebar_types::VideoInfo &video_info,
-										 const app_frame_extractor::ColorFunc &extractor);
+										 const app_frame_extractor::ColorFunc &extractor,
+										 ProgressUpdateCbk on_progress = nullptr,
+										 ProgressCbk on_cancel = nullptr);
 	std::vector<cv::Mat> ExtractStripes(const cinebar_types::InputArgs &args,
-										cinebar_types::VideoInfo &video_info);
+										cinebar_types::VideoInfo &video_info,
+										ProgressUpdateCbk on_progress = nullptr,
+										ProgressCbk on_cancel = nullptr);
 }
 
 #endif

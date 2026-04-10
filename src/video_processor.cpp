@@ -181,18 +181,20 @@ namespace app_video_processor
         return true;
     }
 
-    void DetectVideoBoxType(cinebar_types::VideoInfo &video_info)
+    void DetectVideoBoxType(cinebar_types::VideoInfo &video_info,
+                            ProgressCbk on_start,
+                            ProgressCbk on_finish)
     {
-        // setting up progress spinner
-        auto spinner = app_utility::CreateProgressSpinner("Trimming enabled: Detecting letterboxing/pillarboxing");
-        std::thread spinner_thread = app_utility::StartSpinnerJob(spinner);
-        // detect bounds
-        cinebar_types::VideoBounds bounds;
-        bool success = !DetermineVideoBounds(video_info, bounds);
-        // complete spinner
-        app_utility::StopSpinnerJob(spinner, spinner_thread);
+        if (on_start)
+            on_start();
 
-        if (!success)
+        cinebar_types::VideoBounds bounds;
+        bool has_bounds = !DetermineVideoBounds(video_info, bounds);
+
+        if (on_finish)
+            on_finish();
+
+        if (!has_bounds)
             return;
 
         video_info.bounds = bounds;
@@ -215,7 +217,9 @@ namespace app_video_processor
     std::vector<cv::Vec3b> ExtractColors(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        const app_frame_extractor::ColorFunc &extractor)
+        const app_frame_extractor::ColorFunc &extractor,
+        ProgressUpdateCbk on_progress,
+        ProgressCbk on_cancel)
     {
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
@@ -223,9 +227,6 @@ namespace app_video_processor
         if (!cap.isOpened())
             throw std::runtime_error("video_processor: Failed to open video");
 
-        // setting up progress bar
-        auto bar = app_utility::CreateProgressBar("Processing frames ", args.nframes);
-        // setting up parameters for frame processing
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t segment_length = args.end_frame - args.start_frame + 1;
         const size_t step = segment_length / args.nframes;
@@ -239,7 +240,8 @@ namespace app_video_processor
         {
             if (!cap.read(frame))
             {
-                app_utility::CancelProgressBar(bar);
+                if (on_cancel)
+                    on_cancel();
                 throw std::runtime_error("video_processor: Failed to read frame ");
             }
 
@@ -250,13 +252,15 @@ namespace app_video_processor
             ++current;
             // update progress bar
             ++frame_counter;
-            app_utility::UpdateProgressBar(bar, frame_counter, args.nframes);
+            if (on_progress)
+                on_progress(frame_counter, args.nframes);
 
             for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
             {
                 if (!cap.grab())
                 {
-                    app_utility::CancelProgressBar(bar);
+                    if (on_cancel)
+                        on_cancel();
                     throw std::runtime_error("video_processor: Failed to grab frame ");
                 }
 
@@ -269,7 +273,9 @@ namespace app_video_processor
 
     std::vector<cv::Mat> ExtractStripes(
         const cinebar_types::InputArgs &args,
-        cinebar_types::VideoInfo &video_info)
+        cinebar_types::VideoInfo &video_info,
+        ProgressUpdateCbk on_progress,
+        ProgressCbk on_cancel)
     {
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
@@ -277,9 +283,6 @@ namespace app_video_processor
         if (!cap.isOpened())
             throw std::runtime_error("video_processor: Failed to open video");
 
-        // setting up progress bar
-        auto bar = app_utility::CreateProgressBar("Processing frames ", args.nframes);
-        // setting up parameters for frame processing
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t segment_length = args.end_frame - args.start_frame + 1;
         const size_t step = segment_length / args.nframes;
@@ -294,7 +297,8 @@ namespace app_video_processor
         {
             if (!cap.read(frame))
             {
-                app_utility::CancelProgressBar(bar);
+                if (on_cancel)
+                    on_cancel();
                 throw std::runtime_error("video_processor: Failed to read frame ");
             }
 
@@ -305,14 +309,16 @@ namespace app_video_processor
             ++current;
             // update progress bar
             ++frame_counter;
-            app_utility::UpdateProgressBar(bar, frame_counter, args.nframes);
+            if (on_progress)
+                on_progress(frame_counter, args.nframes);
 
             // skip (step - 1) frames
             for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
             {
                 if (!cap.grab())
                 {
-                    app_utility::CancelProgressBar(bar);
+                    if (on_cancel)
+                        on_cancel();
                     throw std::runtime_error("video_processor: Failed to grab frame ");
                 }
 
