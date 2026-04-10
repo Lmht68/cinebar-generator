@@ -83,6 +83,7 @@ namespace cinebar_types
         size_t height = 0;
         size_t start_frame = 0;
         size_t end_frame = 0;
+        size_t segment_nframes = 0;
         BarcodeShape shape = BarcodeShape::Horizontal;
         bool trim = false;
         bool show_info = false;

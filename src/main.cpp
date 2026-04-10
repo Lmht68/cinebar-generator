@@ -46,37 +46,7 @@ int main(int argc, char **argv)
         }
 
         auto video_info = app_video_processor::LoadVideoInfo(args.input_video_path);
-
-        if (args.interval > 0.0)
-        {
-            args.nframes = app_video_processor::NframesFromInterval(video_info, args.interval);
-        }
-        else if (args.nframes > 0)
-        {
-            // Compute sampling FPS from desired number of frames
-            double duration = static_cast<double>(video_info.frame_count) / video_info.fps;
-            args.interval = args.nframes / duration;
-        }
-        else
-        {
-            // Sample all frames if no interval or nframes is specified
-            args.nframes = video_info.frame_count;
-            args.interval = 1 / video_info.fps;
-        }
-
-        // Ensure nframes does not exceed total frame count
-        args.nframes = std::min(args.nframes, video_info.frame_count);
-
-        // Use original height if not specified for horizontal barcodes
-        if (args.shape == cinebar_types::BarcodeShape::Horizontal && args.height <= 0)
-        {
-            args.height = video_info.height;
-            args.width = args.bar_w * args.nframes;
-        }
-        else
-        {
-            args.height = args.width = args.bar_w * args.nframes;
-        }
+        app_parser::ProcessingArgs(args, video_info);
 
         spdlog::info(
             "Video info:\n"
@@ -139,9 +109,6 @@ int main(int argc, char **argv)
                           "Bars (px)", top_bar, bottom_bar, left_bar, right_bar)
                     : fmt::format("   {:<22}: {}x{}", "Content resolution", content_w, content_h));
         }
-
-        if (args.end_frame == 0)
-            args.end_frame = video_info.frame_count - 1; // Ensure end_frame is set to the last frame if it was 0
 
         cv::Mat barcode;
 

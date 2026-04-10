@@ -8,6 +8,7 @@
 namespace app_parser
 {
 	cinebar_types::InputArgs ParseArgs(int argc, char **argv);
+	void ProcessingArgs(cinebar_types::InputArgs &args, cinebar_types::VideoInfo &video_info);
 }
 
 #endif

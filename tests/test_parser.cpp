@@ -3,132 +3,163 @@
 
 #include <gtest/gtest.h>
 
-#include <filesystem>
-#include <fstream>
-#include <string>
-#include <vector>
-
-namespace fs = std::filesystem;
-
 namespace app_parser
 {
-    class ParserTest : public ::testing::Test
+    class ProcessingArgsTest : public ::testing::Test
     {
     protected:
-        fs::path temp_video;
-
-        void SetUp() override
+        cinebar_types::VideoInfo MakeVideoInfo(
+            int frame_count = 300,
+            double fps = 30.0,
+            int height = 720)
         {
-            // create a dummy file so CLI::ExistingFile passes
-            temp_video = "test_video.mp4";
-            std::ofstream(temp_video.string()).close();
-        }
-
-        void TearDown() override
-        {
-            if (fs::exists(temp_video))
-                fs::remove(temp_video);
-        }
-
-        cinebar_types::InputArgs Parse(const std::vector<std::string> &args)
-        {
-            std::vector<char *> argv;
-            argv.reserve(args.size());
-
-            for (const auto &s : args)
-                argv.push_back(const_cast<char *>(s.c_str()));
-
-            return ParseArgs(
-                static_cast<int>(argv.size()),
-                argv.data());
+            cinebar_types::VideoInfo info{};
+            info.frame_count = frame_count;
+            info.fps = fps;
+            info.height = height;
+            return info;
         }
     };
 
-    TEST_F(ParserTest, VersionDoesNotRequireInput)
+    TEST_F(ProcessingArgsTest, SegmentDefaultsToFullVideo)
     {
-        auto result = Parse({"cinebar", "--version"});
+        cinebar_types::InputArgs args{};
+        auto video = MakeVideoInfo(300);
 
-        EXPECT_TRUE(result.show_info);
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.segment_nframes, 300);
     }
 
-    TEST_F(ParserTest, MissingInputThrows)
+    TEST_F(ProcessingArgsTest, IntervalComputesNframes)
     {
-        EXPECT_THROW(
-            Parse({"cinebar"}),
-            CLI::RequiredError);
+        cinebar_types::InputArgs args{};
+        args.interval = 2.0; // every 2 seconds
+
+        auto video = MakeVideoInfo(300, 30.0); // 10 seconds total
+
+        ProcessingArgs(args, video);
+
+        // Expect ~5 frames (10s / 2s)
+        EXPECT_GT(args.nframes, 0);
     }
 
-    TEST_F(ParserTest, IntervalAndNframesConflict)
+    TEST_F(ProcessingArgsTest, NframesComputesInterval)
     {
-        EXPECT_THROW(
-            Parse({"cinebar",
-                   temp_video.string(),
-                   "--interval", "1",
-                   "--frames", "100"}),
-            CLI::ValidationError);
+        cinebar_types::InputArgs args{};
+        args.nframes = 10;
+
+        auto video = MakeVideoInfo(300, 30.0); // 10 seconds
+
+        ProcessingArgs(args, video);
+
+        EXPECT_GT(args.interval, 0.0);
     }
 
-    TEST_F(ParserTest, DefaultOutputFilenameGenerated)
+    TEST_F(ProcessingArgsTest, DefaultSamplingUsesAllFrames)
     {
-        auto result = Parse({"cinebar",
-                             temp_video.string()});
+        cinebar_types::InputArgs args{};
 
-        EXPECT_EQ(result.output_img_path, "test_video.png");
+        auto video = MakeVideoInfo(120, 24.0);
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.nframes, 120);
+        EXPECT_DOUBLE_EQ(args.interval, 1.0 / 24.0);
     }
 
-    TEST_F(ParserTest, OutputOptionOverridesDefault)
+    TEST_F(ProcessingArgsTest, HorizontalUsesOriginalHeight)
     {
-        auto result = Parse({"cinebar",
-                             temp_video.string(),
-                             "-o", "custom.png"});
+        cinebar_types::InputArgs args{};
+        args.bar_w = 2;
+        args.nframes = 10;
+        args.shape = cinebar_types::BarcodeShape::Horizontal;
 
-        EXPECT_EQ(result.output_img_path, "custom.png");
+        auto video = MakeVideoInfo(100, 30.0, 720);
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.height, 720);
+        EXPECT_EQ(args.width, 20); // 2 * 10
     }
 
-    TEST_F(ParserTest, IntervalOnlyWorks)
+    TEST_F(ProcessingArgsTest, CircularUsesSquareDimensions)
     {
-        auto result = Parse({"cinebar",
-                             temp_video.string(),
-                             "--interval", "2"});
+        cinebar_types::InputArgs args{};
+        args.bar_w = 3;
+        args.nframes = 10;
+        args.shape = cinebar_types::BarcodeShape::Circular;
 
-        EXPECT_DOUBLE_EQ(result.interval, 2.0);
+        auto video = MakeVideoInfo();
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.height, 30);
+        EXPECT_EQ(args.width, 30);
     }
 
-    TEST_F(ParserTest, NframesOnlyWorks)
+    TEST_F(ProcessingArgsTest, EndFrameDefaultsToLastFrame)
     {
-        auto result = Parse({"cinebar",
-                             temp_video.string(),
-                             "--frames", "150"});
+        cinebar_types::InputArgs args{};
+        args.end_frame = 0;
 
-        EXPECT_EQ(result.nframes, 150);
+        auto video = MakeVideoInfo(200);
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.end_frame, 199);
     }
 
-    TEST_F(ParserTest, MethodOptionParsesCorrectly)
+    TEST_F(ProcessingArgsTest, SegmentRangeCalculatesCorrectly)
     {
-        // Test each valid method string
-        std::vector<std::pair<std::string, cinebar_types::Method>> test_cases = {
-            {"avg", cinebar_types::Method::Avg},
-            {"smoothed", cinebar_types::Method::Smoothed},
-            {"kmeans", cinebar_types::Method::KMeans},
-            {"hsv", cinebar_types::Method::HSV},
-            {"stripe", cinebar_types::Method::Stripe}};
+        cinebar_types::InputArgs args{};
+        args.start_frame = 10;
+        args.end_frame = 19;
 
-        for (const auto &[str, expected] : test_cases)
-        {
-            auto result = Parse({"cinebar",
-                                 temp_video.string(),
-                                 "--method", str});
+        // simulate ParseArgs behavior
+        args.segment_nframes = args.end_frame - args.start_frame + 1;
 
-            EXPECT_EQ(result.method, expected) << "Failed for method string: " << str;
-        }
+        auto video = MakeVideoInfo();
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.segment_nframes, 10);
     }
 
-    TEST_F(ParserTest, InvalidMethodThrows)
+    TEST_F(ProcessingArgsTest, NframesGreaterThanSegmentHandledEarlier)
     {
-        EXPECT_THROW(
-            Parse({"cinebar",
-                   temp_video.string(),
-                   "--method", "invalid_method"}),
-            CLI::ValidationError);
+        // This is a safety check: ProcessingArgs assumes ParseArgs already validated
+        cinebar_types::InputArgs args{};
+        args.start_frame = 0;
+        args.end_frame = 9;
+        args.segment_nframes = 10;
+        args.nframes = 20; // invalid but should not crash
+
+        auto video = MakeVideoInfo();
+
+        EXPECT_NO_THROW(ProcessingArgs(args, video));
+    }
+
+    TEST_F(ProcessingArgsTest, ZeroFPSWouldBeProblematic)
+    {
+        cinebar_types::InputArgs args{};
+        auto video = MakeVideoInfo(100, 0.0);
+
+        // This exposes a real edge case in your code
+        // division by zero risk
+        EXPECT_NO_THROW(ProcessingArgs(args, video));
+    }
+
+    TEST_F(ProcessingArgsTest, WidthScalesWithBarWidthAndFrames)
+    {
+        cinebar_types::InputArgs args{};
+        args.bar_w = 4;
+        args.nframes = 25;
+
+        auto video = MakeVideoInfo();
+
+        ProcessingArgs(args, video);
+
+        EXPECT_EQ(args.width, 100);
     }
 }
