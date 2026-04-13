@@ -1,6 +1,5 @@
 #include "video_processor.h"
 #include "frame_extractor.h"
-#include "utility.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -182,22 +181,12 @@ namespace app_video_processor
         return true;
     }
 
-    void DetectVideoBoxType(cinebar_types::VideoInfo &video_info,
-                            ProgressCbk on_start,
-                            ProgressCbk on_finish)
+    void DetectVideoBoxType(cinebar_types::VideoInfo &video_info)
     {
-        if (on_start)
-            on_start();
-
         cinebar_types::VideoBounds bounds;
         bool has_bounds = !DetermineVideoBounds(video_info, bounds);
-
-        if (on_finish)
-            on_finish();
-
         if (!has_bounds)
             return;
-
         video_info.bounds = bounds;
         int crop_w = bounds.right - bounds.left;
         int crop_h = bounds.bottom - bounds.top;
@@ -219,17 +208,12 @@ namespace app_video_processor
     std::vector<cv::Vec3b> ExtractColors(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        ProgressUpdateCbk on_progress,
-        ProgressCbk on_cancel)
+        std::atomic<size_t> &progress_current)
     {
         cv::VideoCapture &cap = video_info.capture;
 
         if (!cap.isOpened())
-        {
-            if (on_cancel)
-                on_cancel();
             throw std::runtime_error("video_processor: Failed to open video");
-        }
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t step = (args.segment_nframes / args.nframes);
@@ -245,10 +229,7 @@ namespace app_video_processor
                     break;
                 CropImage(frame, *video_info.bounds);
                 colors.push_back(Extractor(frame));
-
-                // if (on_progress)
-                //     on_progress(i + 1, args.nframes);
-
+                progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
             }
@@ -260,10 +241,7 @@ namespace app_video_processor
                 if (!cap.read(frame))
                     break;
                 colors.push_back(Extractor(frame));
-
-                // if (on_progress)
-                //     on_progress(i + 1, args.nframes);
-
+                progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
             }
@@ -275,18 +253,13 @@ namespace app_video_processor
     std::vector<cv::Mat> ExtractStripes(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        ProgressUpdateCbk on_progress,
-        ProgressCbk on_cancel)
+        std::atomic<size_t> &progress_current)
     {
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
-        {
-            if (on_cancel)
-                on_cancel();
             throw std::runtime_error("video_processor: Failed to open video");
-        }
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
         const size_t step = (args.segment_nframes / args.nframes);
@@ -302,10 +275,7 @@ namespace app_video_processor
                     break;
                 CropImage(frame, *video_info.bounds);
                 stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
-
-                // if (on_progress)
-                //     on_progress(i + 1, args.nframes);
-
+                progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
             }
@@ -317,10 +287,7 @@ namespace app_video_processor
                 if (!cap.read(frame))
                     break;
                 stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
-
-                // if (on_progress)
-                //     on_progress(i + 1, args.nframes);
-
+                progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
             }
@@ -332,30 +299,29 @@ namespace app_video_processor
     std::vector<cv::Vec3b> ExtractColorsDispatch(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        ProgressUpdateCbk on_progress,
-        ProgressCbk on_cancel)
+        std::atomic<size_t> &progress_current)
     {
         switch (args.method)
         {
         case cinebar_types::Method::Avg:
             return ExtractColors<app_frame_extractor::ExtractColorMean>(
-                args, video_info, on_progress, on_cancel);
+                args, video_info, progress_current);
 
         case cinebar_types::Method::Smoothed:
             return ExtractColors<app_frame_extractor::ExtractSmoothedColor>(
-                args, video_info, on_progress, on_cancel);
+                args, video_info, progress_current);
 
         case cinebar_types::Method::KMeans:
             return ExtractColors<app_frame_extractor::ExtractColorkMeans>(
-                args, video_info, on_progress, on_cancel);
+                args, video_info, progress_current);
 
         case cinebar_types::Method::Hist:
             return ExtractColors<app_frame_extractor::ExtractColorHistogram>(
-                args, video_info, on_progress, on_cancel);
+                args, video_info, progress_current);
 
         case cinebar_types::Method::HSV:
             return ExtractColors<app_frame_extractor::ExtractDominantHue>(
-                args, video_info, on_progress, on_cancel);
+                args, video_info, progress_current);
 
         default:
             throw std::invalid_argument("Invalid extraction method");

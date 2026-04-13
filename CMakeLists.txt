@@ -30,7 +30,6 @@ add_library(cinebar-lib
     src/frame_extractor.cpp
     src/parser.cpp
     src/logger.cpp
-    src/utility.cpp
 )
 
 target_include_directories(cinebar-lib PUBLIC

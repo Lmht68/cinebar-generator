@@ -2,7 +2,6 @@
 #include "logger.h"
 #include "video_processor.h"
 #include "cinebar_generator.h"
-#include "utility.h"
 
 #include <indicators/cursor_control.hpp>
 #include <indicators/progress_spinner.hpp>
@@ -28,13 +27,14 @@ namespace
             option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
     }
 
-    void AssignProgressBar(BlockProgressBar &bar, const std::string &prefix, size_t max_progress)
+    void AssignProgressBar(BlockProgressBar &bar, const std::string &prefix, size_t max_progress, size_t &progress_total)
     {
         show_console_cursor(false);
         bar.set_option(option::Completed{false});
         bar.set_option(option::PrefixText{prefix});
         bar.set_option(option::ForegroundColor{Color::yellow});
         bar.set_option(option::MaxProgress{max_progress});
+        progress_total = max_progress;
     }
 
     void UpdateProgressBar(BlockProgressBar &bar, size_t current, size_t total)
@@ -42,25 +42,44 @@ namespace
         bar.set_progress(current);
         bar.set_option(option::PostfixText{
             std::to_string(current) + "/" + std::to_string(total)});
-
-        if (current >= total)
-        {
-            bar.set_option(option::ForegroundColor{Color::green});
-            bar.mark_as_completed();
-            show_console_cursor(true);
-        }
     }
 
-    void CancelProgressBar(BlockProgressBar &bar)
+    std::thread StartProgressJob(BlockProgressBar &bar,
+                                 std::atomic<size_t> &current,
+                                 std::atomic<bool> &running,
+                                 size_t total)
     {
-        bar.set_option(option::ForegroundColor{Color::red});
-        bar.mark_as_completed();
-        show_console_cursor(true);
+        return std::thread([&running, &current, &bar, total]()
+                           {
+            while (running.load())
+            {
+                UpdateProgressBar(bar, current.load(), total);
+                std::this_thread::sleep_for(std::chrono::milliseconds(40));
+            }
+
+            // final update
+            UpdateProgressBar(bar, total, total);
+
+            if (current.load() == total)
+            {
+                bar.set_option(option::ForegroundColor{Color::green});
+            } else {
+                bar.set_option(option::ForegroundColor{Color::red});
+            }
+
+            bar.mark_as_completed();
+            show_console_cursor(true); });
+    }
+
+    void StopProgressJob(std::atomic<bool> &running, std::thread &t)
+    {
+        running.store(false);
+        if (t.joinable())
+            t.join();
     }
 
     ProgressSpinner CreateProgressSpinner()
     {
-        show_console_cursor(false);
         return ProgressSpinner{
             option::ShowPercentage{false},
             option::SpinnerStates{std::vector<std::string>{"▖", "▘", "▝", "▗"}},
@@ -86,21 +105,19 @@ namespace
             {
                 spinner.tick();
                 std::this_thread::sleep_for(std::chrono::milliseconds(40));
-            } });
+            }
+
+            spinner.set_option(option::ForegroundColor{Color::green});
+            spinner.set_option(option::ShowSpinner{false});
+            spinner.mark_as_completed();
+            show_console_cursor(true); });
     }
 
     void StopSpinnerJob(std::atomic<bool> &running, ProgressSpinner &spinner, std::thread &t)
     {
         running.store(false);
-
-        spinner.set_option(option::ForegroundColor{Color::green});
-        spinner.set_option(option::ShowSpinner{false});
-        spinner.mark_as_completed();
-
         if (t.joinable())
             t.join();
-
-        show_console_cursor(true);
     }
 }
 
@@ -171,9 +188,8 @@ int main(int argc, char **argv)
 
         // Init progress UI
         std::thread spinner_thread;
-        auto spinner = CreateProgressSpinner();
-        auto bar = CreateProgressBar();
         std::atomic<bool> spinner_running{false};
+        auto spinner = CreateProgressSpinner();
 
         auto start_spinner = [&]()
         {
@@ -182,16 +198,29 @@ int main(int argc, char **argv)
         };
         auto stop_spinner = [&]()
         {
-            if (spinner_thread.joinable())
-                StopSpinnerJob(spinner_running, spinner, spinner_thread);
+            StopSpinnerJob(spinner_running, spinner, spinner_thread);
         };
-        auto update_progress = [&](size_t current, size_t total)
+
+        std::thread progress_thread;
+        std::atomic<size_t> progress_current{0};
+        std::atomic<bool> progress_running{false};
+        size_t progress_total = 0;
+        auto bar = CreateProgressBar();
+
+        auto start_progress = [&]()
         {
-            UpdateProgressBar(bar, current, total);
+            progress_running = true;
+            progress_current = 0;
+            progress_thread = StartProgressJob(bar, progress_current, progress_running, progress_total);
         };
-        auto cancel_progress = [&]()
+
+        auto stop_progress = [&]()
         {
-            CancelProgressBar(bar);
+            StopProgressJob(progress_running, progress_thread);
+        };
+        auto update_progress = [&](size_t current)
+        {
+            progress_current = current;
         };
 
         // Detect letterbox / pillarbox trimming, if specified
@@ -200,7 +229,9 @@ int main(int argc, char **argv)
             // create progress spinner for box trimming
             AssignProgressSpinner(spinner, "Trimming enabled: Detecting letterboxing/pillarboxing");
             // run trimming detection
-            app_video_processor::DetectVideoBoxType(video_info, start_spinner, stop_spinner);
+            start_spinner();
+            app_video_processor::DetectVideoBoxType(video_info);
+            stop_spinner();
             int top_bar = 0, bottom_bar = 0, left_bar = 0, right_bar = 0;
 
             if (video_info.bounds)
@@ -233,33 +264,41 @@ int main(int argc, char **argv)
         if (args.method == cinebar_types::Method::Stripe)
         {
             // create progress bar for processing frames
-            AssignProgressBar(bar, "Processing frames ", args.nframes);
+            AssignProgressBar(bar, "Processing frames ", args.nframes, progress_total);
             // extract stripes with progress bar callbacks
-            std::vector<cv::Mat> stripes;
-            stripes = app_video_processor::ExtractStripes(args, video_info, update_progress, cancel_progress);
+            start_progress();
+            std::vector<cv::Mat> stripes = app_video_processor::ExtractStripes(args, video_info, progress_current);
+            stop_progress();
             // create progress spinner for barcode generation
             AssignProgressSpinner(spinner, "Generating barcode");
             // build barcode from stripes with spinner callbacks
-            barcode = cinebar::BuildHorizontalBarcodeFromStripes(stripes, start_spinner, stop_spinner);
+            start_spinner();
+            barcode = cinebar::BuildHorizontalBarcodeFromStripes(stripes);
+            stop_spinner();
         }
         else
         {
             // create progress bar for processing frames
-            AssignProgressBar(bar, "Processing frames ", args.nframes);
+            AssignProgressBar(bar, "Processing frames ", args.nframes, progress_total);
             // extract colors with progress bar callbacks
-            std::vector<cv::Vec3b> colors = app_video_processor::ExtractColorsDispatch(args, video_info, update_progress, cancel_progress);
+            start_progress();
+            std::vector<cv::Vec3b> colors = app_video_processor::ExtractColorsDispatch(args, video_info, progress_current);
+            stop_progress();
             // create progress bar for barcode generation
-            AssignProgressBar(bar, "Generating barcode ", colors.size());
+            AssignProgressBar(bar, "Generating barcode ", colors.size(), progress_total);
+            start_progress();
 
             if (args.shape == cinebar_types::BarcodeShape::Horizontal)
             {
-                barcode = cinebar::BuildHorizontalBarcode(colors, args, update_progress);
+                barcode = cinebar::BuildHorizontalBarcode(colors, args, progress_current);
             }
             else
             {
                 // TODO: Implement circular barcode building
                 throw std::runtime_error("circular barcode shape is not implemented yet");
             }
+
+            stop_progress();
         }
 
         cv::imwrite(args.output_img_path, barcode);
