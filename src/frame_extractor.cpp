@@ -164,17 +164,4 @@ namespace app_frame_extractor
         cv::cvtColor(color_hsv, color_bgr, cv::COLOR_HSV2BGR);
         return color_bgr.at<cv::Vec3b>(0, 0);
     }
-
-    ColorFunc getColorFunction(cinebar_types::Method method)
-    {
-        auto it = kColorExtractorMap.find(method);
-        if (it != kColorExtractorMap.end())
-            return it->second;
-        throw std::invalid_argument("frame_extractor: Invalid extraction method");
-    }
-
-    StripeFunc getStripeFunction()
-    {
-        return ExtractFrameStripe;
-    }
 }

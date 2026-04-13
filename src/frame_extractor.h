@@ -35,18 +35,6 @@ namespace app_frame_extractor
     cv::Vec3b ExtractColorkMeans(const cv::Mat &frame);
     cv::Vec3b ExtractColorHistogram(const cv::Mat &frame);
     cv::Vec3b ExtractDominantHue(const cv::Mat &frame);
-
-    using ColorFunc = cv::Vec3b (*)(const cv::Mat &);
-    using StripeFunc = cv::Mat (*)(const cv::Mat &, size_t);
-    const std::map<cinebar_types::Method, ColorFunc> kColorExtractorMap{
-        {cinebar_types::Method::Avg, ExtractColorMean},
-        {cinebar_types::Method::Smoothed, ExtractSmoothedColor},
-        {cinebar_types::Method::KMeans, ExtractColorkMeans},
-        {cinebar_types::Method::Hist, ExtractColorHistogram},
-        {cinebar_types::Method::HSV, ExtractDominantHue}};
-
-    ColorFunc getColorFunction(cinebar_types::Method method);
-    StripeFunc getStripeFunction();
 }
 
 #endif

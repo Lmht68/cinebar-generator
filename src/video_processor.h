@@ -26,16 +26,19 @@ namespace app_video_processor
 	void DetectVideoBoxType(cinebar_types::VideoInfo &video_info,
 							ProgressCbk on_start = nullptr,
 							ProgressCbk on_finish = nullptr);
-
+	template <auto Extractor>
 	std::vector<cv::Vec3b> ExtractColors(const cinebar_types::InputArgs &args,
 										 cinebar_types::VideoInfo &video_info,
-										 const app_frame_extractor::ColorFunc &extractor,
 										 ProgressUpdateCbk on_progress = nullptr,
 										 ProgressCbk on_cancel = nullptr);
 	std::vector<cv::Mat> ExtractStripes(const cinebar_types::InputArgs &args,
 										cinebar_types::VideoInfo &video_info,
 										ProgressUpdateCbk on_progress = nullptr,
 										ProgressCbk on_cancel = nullptr);
+	std::vector<cv::Vec3b> ExtractColorsDispatch(const cinebar_types::InputArgs &args,
+												 cinebar_types::VideoInfo &video_info,
+												 ProgressUpdateCbk on_progress,
+												 ProgressCbk on_cancel);
 }
 
 #endif

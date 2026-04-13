@@ -247,9 +247,7 @@ int main(int argc, char **argv)
             // create progress bar for processing frames
             AssignProgressBar(bar, "Processing frames ", args.nframes);
             // extract colors with progress bar callbacks
-            auto extractor = app_frame_extractor::getColorFunction(args.method);
-            std::vector<cv::Vec3b> colors;
-            colors = app_video_processor::ExtractColors(args, video_info, extractor, update_progress, cancel_progress);
+            std::vector<cv::Vec3b> colors = app_video_processor::ExtractColorsDispatch(args, video_info, update_progress, cancel_progress);
             // create progress bar for barcode generation
             AssignProgressBar(bar, "Generating barcode ", colors.size());
 

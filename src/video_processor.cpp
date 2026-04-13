@@ -1,4 +1,5 @@
 #include "video_processor.h"
+#include "frame_extractor.h"
 #include "utility.h"
 
 #include <opencv2/opencv.hpp>
@@ -214,15 +215,14 @@ namespace app_video_processor
     }
     // ---
 
+    template <auto Extractor>
     std::vector<cv::Vec3b> ExtractColors(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        const app_frame_extractor::ColorFunc &extractor,
         ProgressUpdateCbk on_progress,
         ProgressCbk on_cancel)
     {
         cv::VideoCapture &cap = video_info.capture;
-        const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
         {
@@ -237,21 +237,36 @@ namespace app_video_processor
         colors.reserve(args.nframes);
         cv::Mat frame;
 
-        for (int i = 0; i < args.nframes; ++i)
+        if (args.trim && video_info.bounds)
         {
-            if (!cap.read(frame))
-                break;
-
-            if (do_trim)
+            for (int i = 0; i < args.nframes; ++i)
+            {
+                if (!cap.read(frame))
+                    break;
                 CropImage(frame, *video_info.bounds);
+                colors.push_back(Extractor(frame));
 
-            colors.push_back(extractor(frame));
+                // if (on_progress)
+                //     on_progress(i + 1, args.nframes);
 
-            // if (on_progress)
-            //     on_progress(i + 1, args.nframes);
+                for (size_t j = 0; j < step - 1; ++j)
+                    cap.grab();
+            }
+        }
+        else
+        {
+            for (int i = 0; i < args.nframes; ++i)
+            {
+                if (!cap.read(frame))
+                    break;
+                colors.push_back(Extractor(frame));
 
-            for (size_t j = 0; j < step - 1; ++j)
-                cap.grab();
+                // if (on_progress)
+                //     on_progress(i + 1, args.nframes);
+
+                for (size_t j = 0; j < step - 1; ++j)
+                    cap.grab();
+            }
         }
 
         return colors;
@@ -277,26 +292,73 @@ namespace app_video_processor
         const size_t step = (args.segment_nframes / args.nframes);
         std::vector<cv::Mat> stripes;
         stripes.reserve(args.nframes);
-        auto extractor = app_frame_extractor::getStripeFunction();
         cv::Mat frame;
 
-        for (int i = 0; i < args.nframes; ++i)
+        if (args.trim && video_info.bounds)
         {
-            if (!cap.read(frame))
-                break;
-
-            if (do_trim)
+            for (int i = 0; i < args.nframes; ++i)
+            {
+                if (!cap.read(frame))
+                    break;
                 CropImage(frame, *video_info.bounds);
+                stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
 
-            stripes.push_back(extractor(frame, args.bar_w));
+                // if (on_progress)
+                //     on_progress(i + 1, args.nframes);
 
-            // if (on_progress)
-            //     on_progress(i + 1, args.nframes);
+                for (size_t j = 0; j < step - 1; ++j)
+                    cap.grab();
+            }
+        }
+        else
+        {
+            for (int i = 0; i < args.nframes; ++i)
+            {
+                if (!cap.read(frame))
+                    break;
+                stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
 
-            for (size_t j = 0; j < step - 1; ++j)
-                cap.grab();
+                // if (on_progress)
+                //     on_progress(i + 1, args.nframes);
+
+                for (size_t j = 0; j < step - 1; ++j)
+                    cap.grab();
+            }
         }
 
         return stripes;
+    }
+
+    std::vector<cv::Vec3b> ExtractColorsDispatch(
+        const cinebar_types::InputArgs &args,
+        cinebar_types::VideoInfo &video_info,
+        ProgressUpdateCbk on_progress,
+        ProgressCbk on_cancel)
+    {
+        switch (args.method)
+        {
+        case cinebar_types::Method::Avg:
+            return ExtractColors<app_frame_extractor::ExtractColorMean>(
+                args, video_info, on_progress, on_cancel);
+
+        case cinebar_types::Method::Smoothed:
+            return ExtractColors<app_frame_extractor::ExtractSmoothedColor>(
+                args, video_info, on_progress, on_cancel);
+
+        case cinebar_types::Method::KMeans:
+            return ExtractColors<app_frame_extractor::ExtractColorkMeans>(
+                args, video_info, on_progress, on_cancel);
+
+        case cinebar_types::Method::Hist:
+            return ExtractColors<app_frame_extractor::ExtractColorHistogram>(
+                args, video_info, on_progress, on_cancel);
+
+        case cinebar_types::Method::HSV:
+            return ExtractColors<app_frame_extractor::ExtractDominantHue>(
+                args, video_info, on_progress, on_cancel);
+
+        default:
+            throw std::invalid_argument("Invalid extraction method");
+        }
     }
 }
