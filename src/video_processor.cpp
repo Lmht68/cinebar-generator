@@ -225,47 +225,33 @@ namespace app_video_processor
         const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
+        {
+            if (on_cancel)
+                on_cancel();
             throw std::runtime_error("video_processor: Failed to open video");
+        }
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
-        const size_t segment_length = args.end_frame - args.start_frame + 1;
-        const size_t step = segment_length / args.nframes;
+        const size_t step = (args.segment_nframes / args.nframes);
         std::vector<cv::Vec3b> colors;
         colors.reserve(args.nframes);
         cv::Mat frame;
-        size_t current = args.start_frame;
-        size_t frame_counter = 0;
 
-        while (current <= args.end_frame && frame_counter < args.nframes)
+        for (int i = 0; i < args.nframes; ++i)
         {
             if (!cap.read(frame))
-            {
-                if (on_cancel)
-                    on_cancel();
-                throw std::runtime_error("video_processor: Failed to read frame ");
-            }
+                break;
 
             if (do_trim)
                 CropImage(frame, *video_info.bounds);
 
             colors.push_back(extractor(frame));
-            ++current;
-            // update progress bar
-            ++frame_counter;
-            if (on_progress)
-                on_progress(frame_counter, args.nframes);
 
-            for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
-            {
-                if (!cap.grab())
-                {
-                    if (on_cancel)
-                        on_cancel();
-                    throw std::runtime_error("video_processor: Failed to grab frame ");
-                }
+            // if (on_progress)
+            //     on_progress(i + 1, args.nframes);
 
-                ++current;
-            }
+            for (size_t j = 0; j < step - 1; ++j)
+                cap.grab();
         }
 
         return colors;
@@ -281,49 +267,34 @@ namespace app_video_processor
         const bool do_trim = args.trim && video_info.bounds;
 
         if (!cap.isOpened())
+        {
+            if (on_cancel)
+                on_cancel();
             throw std::runtime_error("video_processor: Failed to open video");
+        }
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
-        const size_t segment_length = args.end_frame - args.start_frame + 1;
-        const size_t step = segment_length / args.nframes;
+        const size_t step = (args.segment_nframes / args.nframes);
         std::vector<cv::Mat> stripes;
         stripes.reserve(args.nframes);
         auto extractor = app_frame_extractor::getStripeFunction();
         cv::Mat frame;
-        size_t current = args.start_frame;
-        size_t frame_counter = 0;
 
-        while (current <= args.end_frame && frame_counter < args.nframes)
+        for (int i = 0; i < args.nframes; ++i)
         {
             if (!cap.read(frame))
-            {
-                if (on_cancel)
-                    on_cancel();
-                throw std::runtime_error("video_processor: Failed to read frame ");
-            }
+                break;
 
             if (do_trim)
                 CropImage(frame, *video_info.bounds);
 
             stripes.push_back(extractor(frame, args.bar_w));
-            ++current;
-            // update progress bar
-            ++frame_counter;
-            if (on_progress)
-                on_progress(frame_counter, args.nframes);
 
-            // skip (step - 1) frames
-            for (int i = 0; i < step - 1 && current <= args.end_frame; ++i)
-            {
-                if (!cap.grab())
-                {
-                    if (on_cancel)
-                        on_cancel();
-                    throw std::runtime_error("video_processor: Failed to grab frame ");
-                }
+            // if (on_progress)
+            //     on_progress(i + 1, args.nframes);
 
-                ++current;
-            }
+            for (size_t j = 0; j < step - 1; ++j)
+                cap.grab();
         }
 
         return stripes;

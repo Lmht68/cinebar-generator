@@ -23,8 +23,8 @@ namespace cinebar
             cv::Rect roi(x_start, 0, bar_width, height);
             barcode(roi).setTo(colors[i]);
 
-            if (on_progress)
-                on_progress(i + 1, colors.size());
+            // if (on_progress)
+            //     on_progress(i + 1, colors.size());
         }
 
         return barcode;

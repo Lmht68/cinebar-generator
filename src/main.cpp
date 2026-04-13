@@ -270,10 +270,21 @@ int main(int argc, char **argv)
     catch (const CLI::ParseError &pe)
     {
         spdlog::error("parser: {}", pe.what());
+        return 1;
+    }
+    catch (const cv::Exception &ce)
+    {
+        spdlog::error("OpenCV error: {}", ce.what());
+        return 1;
+    }
+    catch (const std::runtime_error &re)
+    {
+        spdlog::error("runtime error: {}", re.what());
+        return 1;
     }
     catch (const std::exception &ex)
     {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << "Unexpected error: " << ex.what() << std::endl;
         return 1;
     }
 
