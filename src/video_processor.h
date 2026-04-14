@@ -11,11 +11,11 @@
 
 namespace app_video_processor
 {
-	constexpr double kDownScaleFactor = 0.25; // 1/4 size for faster processing
-	constexpr double kMinCropRatio = 0.97;	  // Ignore crops that keep more than 97% of the original frame
-	constexpr int kDefaultThreshold = 16;
-	constexpr double kDefaultMinBlackRatio = 0.98;
-	constexpr int kDefaultSampleFrames = 10;
+	inline constexpr double kDownScaleFactor = 0.25; // 1/4 size for faster processing
+	inline constexpr double kMinCropRatio = 0.97;	 // Ignore crops that keep more than 97% of the original frame
+	inline constexpr int kDefaultThreshold = 16;
+	inline constexpr double kDefaultMinBlackRatio = 0.98;
+	inline constexpr int kDefaultSampleFrames = 10;
 
 	cinebar_types::VideoInfo LoadVideoInfo(const std::string &video_path);
 	size_t NframesFromInterval(const size_t frame_count,
