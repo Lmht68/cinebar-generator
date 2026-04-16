@@ -27,7 +27,7 @@ namespace
             option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
     }
 
-    void AssignProgressBar(BlockProgressBar &bar, const std::string &prefix, size_t max_progress, size_t &progress_total)
+    void AssignProgressBar(BlockProgressBar &bar, const std::string &prefix, int max_progress, int &progress_total)
     {
         show_console_cursor(false);
         bar.set_option(option::Completed{false});
@@ -280,18 +280,20 @@ int main(int argc, char **argv)
             start_progress();
             std::vector<cv::Vec3b> colors = app_video_processor::ExtractColorsDispatch(args, video_info, progress_current);
             stop_progress();
-            // create progress bar for barcode generation
-            AssignProgressBar(bar, "Generating barcode ", colors.size(), progress_total);
-            start_progress();
 
             if (args.shape == cinebar_types::Shape::Horizontal)
             {
-                barcode = cinebar::BuildHorizontalBarcode(colors, args, progress_current);
+                // create progress bar for barcode generation
+                AssignProgressBar(bar, "Generating barcode ", static_cast<int>(colors.size()), progress_total);
+                start_progress();
+                barcode = cinebar::BuildHorizontalBarcode(colors, args.height, args.bar_w, progress_current);
             }
             else
             {
-                // TODO: Implement circular barcode building
-                throw std::runtime_error("circular barcode shape is not implemented yet");
+                // create progress bar for barcode generation
+                AssignProgressBar(bar, "Generating barcode ", args.width, progress_total);
+                start_progress();
+                barcode = cinebar::BuildCircularBarcode(colors, args.width, progress_current);
             }
 
             stop_progress();

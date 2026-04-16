@@ -11,12 +11,14 @@ namespace app_parser
         cinebar_types::VideoInfo MakeVideoInfo(
             int frame_count = 300,
             double fps = 30.0,
-            int height = 720)
+            int height = 720,
+            int width = 1080)
         {
             cinebar_types::VideoInfo info{};
             info.frame_count = frame_count;
             info.fps = fps;
             info.height = height;
+            info.width = width;
             return info;
         }
     };
@@ -94,8 +96,8 @@ namespace app_parser
 
         ProcessingArgs(args, video);
 
-        EXPECT_EQ(args.height, 30);
-        EXPECT_EQ(args.width, 30);
+        EXPECT_EQ(args.height, 1080);
+        EXPECT_EQ(args.width, 1080);
     }
 
     TEST_F(ProcessingArgsTest, EndFrameDefaultsToLastFrame)

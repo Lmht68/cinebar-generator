@@ -21,16 +21,18 @@ namespace app_parser
 		app.add_option("-t,--type", args.type, "Barcode type")
 			->transform(CLI::CheckedTransformer(cinebar_types::kArgTypeMap, CLI::ignore_case))
 			->description("Type: color (1 color per frame) | stripe (frame slice)");
-		app.add_option("-w,--bar-width", args.bar_w, "Width of each barcode stripe in pixels")->check(CLI::PositiveNumber);
+		auto bar_w = app.add_option("-w,--bar-width", args.bar_w, "Width of each barcode stripe in pixels")->check(CLI::PositiveNumber);
 		app.add_option("-H,--height", args.height, "Height of the output image in pixels")->check(CLI::PositiveNumber);
-		app.add_flag("-c,--circular", [&](std::int64_t)
-					 { args.shape = cinebar_types::Shape::Circular; });
+		auto opt_circular = app.add_flag("-c,--circular", [&](std::int64_t)
+										 { args.shape = cinebar_types::Shape::Circular; });
 		app.add_flag("-r,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);
 
 		opt_interval->excludes(opt_frames);
 		opt_frames->excludes(opt_interval);
+		bar_w->excludes(opt_circular);
+		opt_circular->excludes(bar_w);
 
 		if (args.type == cinebar_types::Type::Stripe && args.shape == cinebar_types::Shape::Circular)
 			throw CLI::ValidationError("parser: Circular shape is not supported for stripe barcodes");
@@ -91,7 +93,7 @@ namespace app_parser
 		}
 		else
 		{
-			args.height = args.width = args.bar_w * args.nframes;
+			args.height = args.width = video_info.width;
 		}
 
 		if (args.end_frame == 0)
