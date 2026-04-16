@@ -15,19 +15,19 @@ namespace app_video_processor
         if (!video.isOpened())
             throw std::runtime_error("video_processor: Input video not found: " + video_path);
 
-        size_t frame_count = static_cast<size_t>(video.get(cv::CAP_PROP_FRAME_COUNT));
+        int frame_count = video.get(cv::CAP_PROP_FRAME_COUNT);
         double fps = video.get(cv::CAP_PROP_FPS);
         double duration = frame_count / fps;
         auto size = std::filesystem::file_size(video_path);
-        size_t width = static_cast<size_t>(video.get(cv::CAP_PROP_FRAME_WIDTH));
-        size_t height = static_cast<size_t>(video.get(cv::CAP_PROP_FRAME_HEIGHT));
+        int width = video.get(cv::CAP_PROP_FRAME_WIDTH);
+        int height = video.get(cv::CAP_PROP_FRAME_HEIGHT);
 
         return {std::move(video), fps, duration, size, frame_count, width, height};
     }
 
-    size_t NframesFromInterval(const size_t frame_count,
-                               const double interval,
-                               const double fps)
+    int NframesFromInterval(const int frame_count,
+                            const double interval,
+                            const double fps)
     {
         if (interval <= 0.0)
             throw std::invalid_argument("video_processor: Interval must be greater than 0");
@@ -39,7 +39,7 @@ namespace app_video_processor
             throw std::runtime_error("video_processor: Invalid frame count value");
 
         double duration = frame_count / fps;
-        return static_cast<size_t>(std::round(duration / interval));
+        return static_cast<int>(std::round(duration / interval));
     }
     // ---
 
@@ -208,7 +208,7 @@ namespace app_video_processor
     std::vector<cv::Vec3b> ExtractColors(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        std::atomic<size_t> &progress_current)
+        std::atomic<int> &progress_current)
     {
         cv::VideoCapture &cap = video_info.capture;
 
@@ -216,7 +216,7 @@ namespace app_video_processor
             throw std::runtime_error("video_processor: Failed to open video");
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
-        const size_t step = (args.segment_nframes / args.nframes);
+        const int step = (args.segment_nframes / args.nframes);
         std::vector<cv::Vec3b> colors;
         colors.reserve(args.nframes);
         cv::Mat frame;
@@ -230,7 +230,7 @@ namespace app_video_processor
                 CropImage(frame, *video_info.bounds);
                 colors.push_back(Extractor(frame));
                 progress_current = i + 1;
-                for (size_t j = 0; j < step - 1; ++j)
+                for (int j = 0; j < step - 1; ++j)
                     cap.grab();
             }
         }
@@ -242,7 +242,7 @@ namespace app_video_processor
                     break;
                 colors.push_back(Extractor(frame));
                 progress_current = i + 1;
-                for (size_t j = 0; j < step - 1; ++j)
+                for (int j = 0; j < step - 1; ++j)
                     cap.grab();
             }
         }
@@ -254,7 +254,7 @@ namespace app_video_processor
     std::vector<cv::Mat> ExtractStripes(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        std::atomic<size_t> &progress_current)
+        std::atomic<int> &progress_current)
     {
         cv::VideoCapture &cap = video_info.capture;
         const bool do_trim = args.trim && video_info.bounds;
@@ -263,7 +263,7 @@ namespace app_video_processor
             throw std::runtime_error("video_processor: Failed to open video");
 
         cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(args.start_frame));
-        const size_t step = (args.segment_nframes / args.nframes);
+        const int step = (args.segment_nframes / args.nframes);
         std::vector<cv::Mat> stripes;
         stripes.reserve(args.nframes);
         cv::Mat frame;
@@ -277,7 +277,7 @@ namespace app_video_processor
                 CropImage(frame, *video_info.bounds);
                 stripes.push_back(Extractor(frame, args.bar_w));
                 progress_current = i + 1;
-                for (size_t j = 0; j < step - 1; ++j)
+                for (int j = 0; j < step - 1; ++j)
                     cap.grab();
             }
         }
@@ -289,7 +289,7 @@ namespace app_video_processor
                     break;
                 stripes.push_back(Extractor(frame, args.bar_w));
                 progress_current = i + 1;
-                for (size_t j = 0; j < step - 1; ++j)
+                for (int j = 0; j < step - 1; ++j)
                     cap.grab();
             }
         }
@@ -300,7 +300,7 @@ namespace app_video_processor
     std::vector<cv::Vec3b> ExtractColorsDispatch(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
-        std::atomic<size_t> &progress_current)
+        std::atomic<int> &progress_current)
     {
         switch (args.method)
         {
@@ -331,7 +331,7 @@ namespace app_video_processor
 
     std::vector<cv::Mat> ExtractStripesDispatch(const cinebar_types::InputArgs &args,
                                                 cinebar_types::VideoInfo &video_info,
-                                                std::atomic<size_t> &progress_current)
+                                                std::atomic<int> &progress_current)
     {
         switch (args.method)
         {

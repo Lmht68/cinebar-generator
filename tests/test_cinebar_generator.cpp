@@ -27,7 +27,7 @@ namespace cinebar
         std::vector<cv::Vec3b> colors;
         auto args = DefaultArgs();
 
-        std::atomic<size_t> progress{0};
+        std::atomic<int> progress{0};
 
         EXPECT_THROW(
             BuildHorizontalBarcode(colors, args, progress),
@@ -43,7 +43,7 @@ namespace cinebar
 
         auto args = DefaultArgs(20, 4);
 
-        std::atomic<size_t> progress{0};
+        std::atomic<int> progress{0};
 
         cv::Mat result = BuildHorizontalBarcode(colors, args, progress);
 
@@ -60,7 +60,7 @@ namespace cinebar
 
         auto args = DefaultArgs(5, 3);
 
-        std::atomic<size_t> progress{0};
+        std::atomic<int> progress{0};
 
         cv::Mat result = BuildHorizontalBarcode(colors, args, progress);
 

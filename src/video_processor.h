@@ -18,9 +18,9 @@ namespace app_video_processor
 	inline constexpr int kDefaultSampleFrames = 10;
 
 	cinebar_types::VideoInfo LoadVideoInfo(const std::string &video_path);
-	size_t NframesFromInterval(const size_t frame_count,
-							   const double interval,
-							   const double fps);
+	int NframesFromInterval(const int frame_count,
+							const double interval,
+							const double fps);
 	std::optional<cinebar_types::VideoBounds> DetectBounds(const cv::Mat &frame_grayed);
 	void CropImage(cv::Mat &frame,
 				   const cinebar_types::VideoBounds &bounds);
@@ -28,17 +28,17 @@ namespace app_video_processor
 	template <auto Extractor>
 	std::vector<cv::Vec3b> ExtractColors(const cinebar_types::InputArgs &args,
 										 cinebar_types::VideoInfo &video_info,
-										 std::atomic<size_t> &progress_current);
+										 std::atomic<int> &progress_current);
 	template <auto Extractor>
 	std::vector<cv::Mat> ExtractStripes(const cinebar_types::InputArgs &args,
 										cinebar_types::VideoInfo &video_info,
-										std::atomic<size_t> &progress_current);
+										std::atomic<int> &progress_current);
 	std::vector<cv::Vec3b> ExtractColorsDispatch(const cinebar_types::InputArgs &args,
 												 cinebar_types::VideoInfo &video_info,
-												 std::atomic<size_t> &progress_current);
+												 std::atomic<int> &progress_current);
 	std::vector<cv::Mat> ExtractStripesDispatch(const cinebar_types::InputArgs &args,
 												cinebar_types::VideoInfo &video_info,
-												std::atomic<size_t> &progress_current);
+												std::atomic<int> &progress_current);
 }
 
 #endif

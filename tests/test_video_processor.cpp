@@ -26,46 +26,46 @@ namespace app_video_processor
 
     TEST(NframesFromIntervalTest, BasicValidCase)
     {
-        size_t frame_count = 300;
+        int frame_count = 300;
         double fps = 30.0;
         double interval = 1.0;
 
         // duration = 10s → 10 / 1 = 10 frames
-        size_t result = NframesFromInterval(frame_count, interval, fps);
+        int result = NframesFromInterval(frame_count, interval, fps);
         EXPECT_EQ(result, 10);
     }
 
     TEST(NframesFromIntervalTest, NonIntegerResultRoundsCorrectly)
     {
-        size_t frame_count = 300;
+        int frame_count = 300;
         double fps = 30.0;
         double interval = 0.7;
 
         // duration = 10s → 10 / 0.7 ≈ 14.285 → rounds to 14
-        size_t result = NframesFromInterval(frame_count, interval, fps);
-        EXPECT_EQ(result, static_cast<size_t>(std::round(10.0 / 0.7)));
+        int result = NframesFromInterval(frame_count, interval, fps);
+        EXPECT_EQ(result, static_cast<int>(std::round(10.0 / 0.7)));
     }
 
     TEST(NframesFromIntervalTest, LargeValues)
     {
-        size_t frame_count = 100000;
+        int frame_count = 100000;
         double fps = 25.0;
         double interval = 2.0;
 
         double duration = frame_count / fps;
-        size_t expected = static_cast<size_t>(std::round(duration / interval));
+        int expected = static_cast<int>(std::round(duration / interval));
 
         EXPECT_EQ(NframesFromInterval(frame_count, interval, fps), expected);
     }
 
     TEST(NframesFromIntervalTest, IntervalExactlyOneFrame)
     {
-        size_t frame_count = 60;
+        int frame_count = 60;
         double fps = 30.0;
         double interval = 1.0 / fps;
 
         // duration = 2s → 2 / (1/30) = 60
-        size_t result = NframesFromInterval(frame_count, interval, fps);
+        int result = NframesFromInterval(frame_count, interval, fps);
         EXPECT_EQ(result, frame_count);
     }
 

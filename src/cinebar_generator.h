@@ -11,7 +11,8 @@ namespace cinebar
 {
     cv::Mat BuildHorizontalBarcode(const std::vector<cv::Vec3b> &colors,
                                    const cinebar_types::InputArgs &args,
-                                   std::atomic<size_t> &progress_current);
+                                   std::atomic<int> &progress_current);
+                                   std::atomic<int> &progress_current);
     cv::Mat BuildHorizontalBarcodeFromStripes(const std::vector<cv::Mat> &stripes);
 }
 

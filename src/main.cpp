@@ -37,7 +37,7 @@ namespace
         progress_total = max_progress;
     }
 
-    void UpdateProgressBar(BlockProgressBar &bar, size_t current, size_t total)
+    void UpdateProgressBar(BlockProgressBar &bar, int current, int total)
     {
         bar.set_progress(current);
         bar.set_option(option::PostfixText{
@@ -47,9 +47,9 @@ namespace
     }
 
     std::thread StartProgressJob(BlockProgressBar &bar,
-                                 std::atomic<size_t> &current,
+                                 std::atomic<int> &current,
                                  std::atomic<bool> &running,
-                                 size_t total)
+                                 int total)
     {
         return std::thread([&running, &current, &bar, total]()
                            {
@@ -198,9 +198,9 @@ int main(int argc, char **argv)
         };
 
         std::thread progress_thread;
-        std::atomic<size_t> progress_current{0};
+        std::atomic<int> progress_current{0};
         std::atomic<bool> progress_running{false};
-        size_t progress_total = 0;
+        int progress_total = 0;
         auto bar = CreateProgressBar();
 
         auto start_progress = [&]()
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
         {
             StopProgressJob(progress_running, progress_thread);
         };
-        auto update_progress = [&](size_t current)
+        auto update_progress = [&](int current)
         {
             progress_current = current;
         };
