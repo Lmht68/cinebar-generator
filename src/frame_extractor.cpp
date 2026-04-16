@@ -3,13 +3,6 @@
 
 namespace app_frame_extractor
 {
-    cv::Mat ExtractFrameStripe(const cv::Mat &frame, size_t width)
-    {
-        cv::Mat stripe;
-        cv::resize(frame, stripe, cv::Size(static_cast<int>(width), frame.rows), 0, 0, cv::INTER_AREA);
-        return stripe;
-    }
-
     cv::Vec3b ExtractSmoothedColor(const cv::Mat &frame)
     {
         cv::Mat smoothed_frm;
@@ -135,14 +128,19 @@ namespace app_frame_extractor
 
         cv::calcHist(&hsv, 1, channels, mask, hist, 1, &kHueBins, ranges);
 
-        int dominant = 0;
-        cv::minMaxIdx(hist, nullptr, nullptr, nullptr, &dominant);
-        // direct conversion without Mat allocation
-        cv::Vec3b hsv_color(dominant, 255, 255);
-        cv::Vec3b bgr;
+        // Find max bin using STL
+        const float *hist_ptr = hist.ptr<float>(0);
+        int dominant_bin = static_cast<int>(
+            std::max_element(hist_ptr, hist_ptr + kHueBins) - hist_ptr);
+        // Convert bin → actual hue (0–179)
+        int hue = static_cast<int>((dominant_bin + 0.5f) * 180.0f / kHueBins);
+        // Build HSV color and convert back to BGR
+        cv::Vec3b hsv_color(
+            static_cast<uchar>(hue),
+            255,
+            255);
         cv::Mat tmp(1, 1, CV_8UC3, hsv_color);
         cv::cvtColor(tmp, tmp, cv::COLOR_HSV2BGR);
-
         return tmp.at<cv::Vec3b>(0, 0);
     }
 }
