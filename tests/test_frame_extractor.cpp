@@ -52,7 +52,7 @@ TEST(FrameExtractorTests, ExtractFrameStripe_Size)
     cv::Vec3b color(100, 150, 200);
     cv::Mat frame = CreateSolidColorFrame(color, 10, 20);
     int width = 5;
-    cv::Mat stripe = ExtractFrameStripe(frame, width);
+    cv::Mat stripe = ExtractMeanFrameStripe(frame, width);
     EXPECT_EQ(stripe.rows, frame.rows);
     EXPECT_EQ(stripe.cols, width);
 

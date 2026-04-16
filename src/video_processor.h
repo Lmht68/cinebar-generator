@@ -29,12 +29,16 @@ namespace app_video_processor
 	std::vector<cv::Vec3b> ExtractColors(const cinebar_types::InputArgs &args,
 										 cinebar_types::VideoInfo &video_info,
 										 std::atomic<size_t> &progress_current);
+	template <auto Extractor>
 	std::vector<cv::Mat> ExtractStripes(const cinebar_types::InputArgs &args,
 										cinebar_types::VideoInfo &video_info,
 										std::atomic<size_t> &progress_current);
 	std::vector<cv::Vec3b> ExtractColorsDispatch(const cinebar_types::InputArgs &args,
 												 cinebar_types::VideoInfo &video_info,
 												 std::atomic<size_t> &progress_current);
+	std::vector<cv::Mat> ExtractStripesDispatch(const cinebar_types::InputArgs &args,
+												cinebar_types::VideoInfo &video_info,
+												std::atomic<size_t> &progress_current);
 }
 
 #endif

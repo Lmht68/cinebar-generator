@@ -170,11 +170,13 @@ int main(int argc, char **argv)
             "   {:<22}: {}\n"
             "   {:<22}: {}\n"
             "   {:<22}: {}\n"
+            "   {:<22}: {}\n"
             "   {:<22}: {}x{}",
             "Input video", args.input_video_path,
             "Output image", args.output_img_path,
             "Sampling interval (s)", args.interval,
             "Frames sampled", args.nframes,
+            "Type", cinebar_types::ToString(args.type),
             "Method", cinebar_types::ToString(args.method),
             "Shape", cinebar_types::ToString(args.shape),
             "Stripe width (px)", args.bar_w,
@@ -255,13 +257,13 @@ int main(int argc, char **argv)
 
         cv::Mat barcode;
 
-        if (args.method == cinebar_types::Method::Stripe)
+        if (args.type == cinebar_types::Type::Stripe)
         {
             // create progress bar for processing frames
             AssignProgressBar(bar, "Processing frames ", args.nframes, progress_total);
             // extract stripes with progress bar callbacks
             start_progress();
-            std::vector<cv::Mat> stripes = app_video_processor::ExtractStripes(args, video_info, progress_current);
+            std::vector<cv::Mat> stripes = app_video_processor::ExtractStripesDispatch(args, video_info, progress_current);
             stop_progress();
             // create progress spinner for barcode generation
             AssignProgressSpinner(spinner, "Generating barcode");
@@ -282,7 +284,7 @@ int main(int argc, char **argv)
             AssignProgressBar(bar, "Generating barcode ", colors.size(), progress_total);
             start_progress();
 
-            if (args.shape == cinebar_types::BarcodeShape::Horizontal)
+            if (args.shape == cinebar_types::Shape::Horizontal)
             {
                 barcode = cinebar::BuildHorizontalBarcode(colors, args, progress_current);
             }

@@ -29,7 +29,24 @@ namespace app_frame_extractor
     inline constexpr int kMinValue = 50;
     inline constexpr int kMaxValue = 255;
 
-    cv::Mat ExtractFrameStripe(const cv::Mat &frame, size_t width);
+    template <int interpolation>
+    cv::Mat ExtractFrameStripe(const cv::Mat &frame, size_t width)
+    {
+        cv::Mat stripe;
+        cv::resize(frame, stripe, cv::Size(static_cast<int>(width), frame.rows), 0, 0, interpolation);
+        return stripe;
+    }
+
+    inline cv::Mat ExtractMeanFrameStripe(const cv::Mat &frame, size_t width)
+    {
+        return ExtractFrameStripe<cv::INTER_AREA>(frame, width);
+    }
+
+    inline cv::Mat ExtractSmoothedFrameStripe(const cv::Mat &frame, size_t width)
+    {
+        return ExtractFrameStripe<cv::INTER_LINEAR>(frame, width);
+    }
+
     cv::Vec3b ExtractSmoothedColor(const cv::Mat &frame);
     cv::Vec3b ExtractColorMean(const cv::Mat &frame);
     cv::Vec3b ExtractColorkMeans(const cv::Mat &frame);

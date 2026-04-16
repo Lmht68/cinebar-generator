@@ -73,7 +73,7 @@ namespace app_parser
         cinebar_types::InputArgs args{};
         args.bar_w = 2;
         args.nframes = 10;
-        args.shape = cinebar_types::BarcodeShape::Horizontal;
+        args.shape = cinebar_types::Shape::Horizontal;
 
         auto video = MakeVideoInfo(100, 30.0, 720);
 
@@ -88,7 +88,7 @@ namespace app_parser
         cinebar_types::InputArgs args{};
         args.bar_w = 3;
         args.nframes = 10;
-        args.shape = cinebar_types::BarcodeShape::Circular;
+        args.shape = cinebar_types::Shape::Circular;
 
         auto video = MakeVideoInfo();
 

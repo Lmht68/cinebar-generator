@@ -250,6 +250,7 @@ namespace app_video_processor
         return colors;
     }
 
+    template <auto Extractor>
     std::vector<cv::Mat> ExtractStripes(
         const cinebar_types::InputArgs &args,
         cinebar_types::VideoInfo &video_info,
@@ -274,7 +275,7 @@ namespace app_video_processor
                 if (!cap.read(frame))
                     break;
                 CropImage(frame, *video_info.bounds);
-                stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
+                stripes.push_back(Extractor(frame, args.bar_w));
                 progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
@@ -286,7 +287,7 @@ namespace app_video_processor
             {
                 if (!cap.read(frame))
                     break;
-                stripes.push_back(app_frame_extractor::ExtractFrameStripe(frame, args.bar_w));
+                stripes.push_back(Extractor(frame, args.bar_w));
                 progress_current = i + 1;
                 for (size_t j = 0; j < step - 1; ++j)
                     cap.grab();
@@ -321,6 +322,25 @@ namespace app_video_processor
 
         case cinebar_types::Method::HSV:
             return ExtractColors<app_frame_extractor::ExtractDominantHue>(
+                args, video_info, progress_current);
+
+        default:
+            throw std::invalid_argument("Invalid extraction method");
+        }
+    }
+
+    std::vector<cv::Mat> ExtractStripesDispatch(const cinebar_types::InputArgs &args,
+                                                cinebar_types::VideoInfo &video_info,
+                                                std::atomic<size_t> &progress_current)
+    {
+        switch (args.method)
+        {
+        case cinebar_types::Method::Avg:
+            return ExtractStripes<app_frame_extractor::ExtractMeanFrameStripe>(
+                args, video_info, progress_current);
+
+        case cinebar_types::Method::Smoothed:
+            return ExtractStripes<app_frame_extractor::ExtractSmoothedFrameStripe>(
                 args, video_info, progress_current);
 
         default:

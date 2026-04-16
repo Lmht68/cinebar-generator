@@ -10,28 +10,34 @@
 
 namespace cinebar_types
 {
-    enum class BarcodeShape
+    enum class Shape
     {
         Horizontal,
         Circular
     };
 
-    inline const char *ToString(BarcodeShape shape)
+    inline const char *ToString(Shape shape)
     {
         switch (shape)
         {
-        case BarcodeShape::Horizontal:
+        case Shape::Horizontal:
             return "Horizontal";
-        case BarcodeShape::Circular:
+        case Shape::Circular:
             return "Circular";
         default:
             return "Unknown";
         };
     };
 
-    const std::map<std::string, BarcodeShape> kArgShapeMap{
-        {"horizontal", BarcodeShape::Horizontal},
-        {"circular", BarcodeShape::Circular}};
+    const std::map<std::string, Shape> kArgShapeMap{
+        {"horizontal", Shape::Horizontal},
+        {"circular", Shape::Circular}};
+
+    enum class Type
+    {
+        Color,
+        Stripe
+    };
 
     enum class Method
     {
@@ -40,8 +46,20 @@ namespace cinebar_types
         KMeans,
         Hist,
         HSV,
-        Stripe,
     };
+
+    inline const char *ToString(Type type)
+    {
+        switch (type)
+        {
+        case Type::Color:
+            return "Color";
+        case Type::Stripe:
+            return "Stripe";
+        default:
+            return "Unknown";
+        }
+    }
 
     inline const char *ToString(Method method)
     {
@@ -57,20 +75,21 @@ namespace cinebar_types
             return "Hist";
         case Method::HSV:
             return "HSV";
-        case Method::Stripe:
-            return "Stripe";
         default:
             return "Unknown";
         }
     }
+
+    const std::map<std::string, Type> kArgTypeMap{
+        {"color", Type::Color},
+        {"stripe", Type::Stripe}};
 
     const std::map<std::string, Method> kArgMethodMap{
         {"avg", Method::Avg},
         {"smoothed", Method::Smoothed},
         {"kmeans", Method::KMeans},
         {"hist", Method::Hist},
-        {"hsv", Method::HSV},
-        {"stripe", Method::Stripe}};
+        {"hsv", Method::HSV}};
 
     struct InputArgs
     {
@@ -84,9 +103,10 @@ namespace cinebar_types
         size_t start_frame = 0;
         size_t end_frame = 0;
         size_t segment_nframes = 0;
-        BarcodeShape shape = BarcodeShape::Horizontal;
+        Shape shape = Shape::Horizontal;
         bool trim = false;
         bool show_info = false;
+        Type type = Type::Color;
         Method method = Method::Avg;
     };
 

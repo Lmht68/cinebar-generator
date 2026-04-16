@@ -13,38 +13,46 @@ namespace app_parser
 		app.add_flag("-v,--version", args.show_info, "Display application version info");
 		app.add_option("input", args.input_video_path, "Input video file")->check(CLI::ExistingFile);
 		app.add_option("-o,--output", args.output_img_path, "Output barcode image filename. If not provided, a name will be automatically generated.");
-		app.add_option("-i,--interval", args.interval, "Frame sampling interval in seconds")->check(CLI::PositiveNumber);
-		app.add_option("-n,--frames", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
+		auto opt_interval = app.add_option("-i,--interval", args.interval, "Frame sampling interval in seconds")->check(CLI::PositiveNumber);
+		auto opt_frames = app.add_option("-n,--frames", args.nframes, "Number of frames to sample in the visualization")->check(CLI::PositiveNumber);
 		app.add_option("-m,--method", args.method, "Color extraction method")
 			->transform(CLI::CheckedTransformer(cinebar_types::kArgMethodMap, CLI::ignore_case))
-			->description("Method: avg | smoothed | kmeans | hist | hsv | stripe");
-		app.add_option("-W,--bar-width", args.bar_w, "Width of each barcode stripe in the output barcode image, in pixels")->check(CLI::PositiveNumber);
-		app.add_option("-H,--height", args.height, "Height of the output barcode image, in pixels")->check(CLI::PositiveNumber);
-		app.add_flag("-c, --circular", [&](std::int64_t)
-					 { args.shape = cinebar_types::BarcodeShape::Circular; });
-		app.add_flag("-t,--trim", args.trim, "Trim letterboxing and end credits from the video");
+			->description("Method: avg | smoothed | kmeans | hist | hsv");
+		app.add_option("-t,--type", args.type, "Barcode type")
+			->transform(CLI::CheckedTransformer(cinebar_types::kArgTypeMap, CLI::ignore_case))
+			->description("Type: color (1 color per frame) | stripe (frame slice)");
+		app.add_option("-w,--bar-width", args.bar_w, "Width of each barcode stripe in pixels")->check(CLI::PositiveNumber);
+		app.add_option("-H,--height", args.height, "Height of the output image in pixels")->check(CLI::PositiveNumber);
+		app.add_flag("-c,--circular", [&](std::int64_t)
+					 { args.shape = cinebar_types::Shape::Circular; });
+		app.add_flag("-r,--trim", args.trim, "Trim letterboxing and end credits from the video");
 
 		app.parse(argc, argv);
+
+		opt_interval->excludes(opt_frames);
+		opt_frames->excludes(opt_interval);
+
+		if (args.type == cinebar_types::Type::Stripe && args.shape == cinebar_types::Shape::Circular)
+			throw CLI::ValidationError("parser: Circular shape is not supported for stripe barcodes");
+		if (args.type == cinebar_types::Type::Stripe &&
+			(args.method == cinebar_types::Method::KMeans || args.method == cinebar_types::Method::Hist || args.method == cinebar_types::Method::HSV))
+			throw CLI::ValidationError("parser: KMeans, Hist, and HSV methods are not supported for stripe barcodes");
 
 		if (args.start_frame > 0 || args.end_frame > 0)
 		{
 			if (args.end_frame < args.start_frame)
 				throw CLI::ValidationError("parser: End frame cannot be less than start frame");
+
 			args.segment_nframes = args.end_frame - args.start_frame + 1;
+
+			if (args.nframes > args.segment_nframes)
+				throw CLI::ValidationError("parser: Number of frames to sample cannot exceed the total number of frames in the specified segment");
 		}
 		else
 		{
 			args.segment_nframes = 0; // Will be set to total frame count later if not specified
 		}
-		if (args.nframes > 0)
-		{
-			if (args.interval > 0.0)
-				throw CLI::ValidationError(
-					"parser: Sampling options conflict: choose either --interval (time-based) or --nframes (fixed-count), but not both");
-			if (args.segment_nframes > 0 && args.nframes > args.segment_nframes)
-				throw CLI::ValidationError(
-					"parser: Number of frames to sample cannot exceed the total number of frames in the specified segment");
-		}
+
 		if (!args.show_info && args.input_video_path.empty())
 			throw CLI::RequiredError("Input video");
 		if (args.output_img_path.empty())
@@ -76,7 +84,7 @@ namespace app_parser
 			args.interval = 1 / video_info.fps;
 		}
 		// Use original height if not specified for horizontal barcodes
-		if (args.shape == cinebar_types::BarcodeShape::Horizontal && args.height <= 0)
+		if (args.shape == cinebar_types::Shape::Horizontal && args.height <= 0)
 		{
 			args.height = video_info.height;
 			args.width = args.bar_w * args.nframes;
