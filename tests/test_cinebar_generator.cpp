@@ -22,6 +22,7 @@ namespace
 
 namespace cinebar
 {
+    // ===================== Horizontal =====================
     TEST(BuildHorizontalBarcodeTest, ThrowsOnEmptyColors)
     {
         std::vector<cv::Vec3b> colors;
@@ -30,7 +31,7 @@ namespace cinebar
         std::atomic<int> progress{0};
 
         EXPECT_THROW(
-            BuildHorizontalBarcode(colors, args, progress),
+            BuildHorizontalBarcode(colors, args.height, args.bar_w, progress),
             std::runtime_error);
     }
 
@@ -45,7 +46,7 @@ namespace cinebar
 
         std::atomic<int> progress{0};
 
-        cv::Mat result = BuildHorizontalBarcode(colors, args, progress);
+        cv::Mat result = BuildHorizontalBarcode(colors, args.height, args.bar_w, progress);
 
         EXPECT_EQ(result.rows, 20);
         EXPECT_EQ(result.cols, 3 * 4);
@@ -62,7 +63,7 @@ namespace cinebar
 
         std::atomic<int> progress{0};
 
-        cv::Mat result = BuildHorizontalBarcode(colors, args, progress);
+        cv::Mat result = BuildHorizontalBarcode(colors, args.height, args.bar_w, progress);
 
         for (int y = 0; y < result.rows; ++y)
         {

@@ -4,15 +4,14 @@ namespace cinebar
 {
     cv::Mat BuildHorizontalBarcode(
         const std::vector<cv::Vec3b> &colors,
-        const cinebar_types::InputArgs &args,
-        std::atomic<size_t> &progress_current)
+        int height,
+        int bar_width,
+        std::atomic<int> &progress_current)
     {
         if (colors.empty())
             throw std::runtime_error("cinebar_generator: No colors provided");
 
         const int num_colors = static_cast<int>(colors.size());
-        int height = static_cast<int>(args.height);
-        int bar_width = static_cast<int>(args.bar_w);
         int total_width = num_colors * bar_width;
 
         cv::Mat barcode(height, total_width, CV_8UC3);
