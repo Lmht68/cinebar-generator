@@ -1,8 +1,11 @@
-name: C++ CI (cinebar-generator)
+name: C++ CI (cinebar)
 
 on:
   push:
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   build:
