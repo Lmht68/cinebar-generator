@@ -24,7 +24,6 @@ jobs:
             libgtest-dev \
             libcli11-dev
 
-      # Build GTest (required on Ubuntu)
       - name: Build GTest
         run: |
           cd /usr/src/gtest
@@ -40,3 +39,29 @@ jobs:
 
       - name: Run tests
         run: ctest --test-dir build --output-on-failure
+
+  docs:
+    runs-on: ubuntu-latest
+
+    # Only deploy on main branch (important)
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Generate docs
+        run: |
+          cd docs
+          doxygen doxygen.txt
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/html
